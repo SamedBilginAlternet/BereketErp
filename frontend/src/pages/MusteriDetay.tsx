@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Phone, BookOpen, Wallet, Calendar, CreditCard } from 'lucide-react'
 import { getCustomer } from '@/api/customers'
 import { getCustomerBalance, recordPayment } from '@/api/payments'
 import { getCustomerSales } from '@/api/sales'
@@ -141,8 +142,8 @@ export default function MusteriDetay() {
   return (
     <div className="p-6 max-w-3xl">
       <div className="flex items-center gap-2 mb-5">
-        <Link to="/musteriler" className="text-xs text-muted-foreground hover:text-foreground">
-          ← Müşteriler
+        <Link to="/musteriler" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+          <ArrowLeft size={13} />Müşteriler
         </Link>
       </div>
 
@@ -150,11 +151,14 @@ export default function MusteriDetay() {
       <div className="bg-card border border-border rounded-lg p-5 mb-5">
         <h1 className="text-lg font-semibold text-foreground">{customer.name}</h1>
         {customer.phone && (
-          <p className="text-sm text-muted-foreground mt-0.5">{customer.phone}</p>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <Phone size={13} />{customer.phone}
+          </p>
         )}
         {customer.ledger_name && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Defter: <span className="font-medium">{customer.ledger_name}</span>
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+            <BookOpen size={12} />
+            <span className="font-medium">{customer.ledger_name}</span>
             {customer.ledger_page && ` / Sayfa: ${customer.ledger_page}`}
             {customer.ledger_row && ` / Satır: ${customer.ledger_row}`}
           </p>
@@ -165,19 +169,28 @@ export default function MusteriDetay() {
       {balance && (
         <div className="grid grid-cols-3 gap-3 mb-5">
           <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Toplam Borç</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Wallet size={13} className="text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Toplam Borç</p>
+            </div>
             <p className="text-lg font-semibold tabular-nums text-foreground">
               {formatMoney(balance.total_debt)}
             </p>
           </div>
           <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Kalan Taksit</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <CreditCard size={13} className="text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Kalan Taksit</p>
+            </div>
             <p className="text-lg font-semibold tabular-nums text-foreground">
               {balance.remaining_installments}
             </p>
           </div>
           <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Sıradaki Ödeme</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Calendar size={13} className="text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Sıradaki Ödeme</p>
+            </div>
             {balance.next_due_date ? (
               <>
                 <p className="text-lg font-semibold tabular-nums text-foreground">

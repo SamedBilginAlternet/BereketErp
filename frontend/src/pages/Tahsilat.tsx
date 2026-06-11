@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Phone, CheckCircle2, Clock, PhoneOff, CalendarClock, History, PhoneCall } from 'lucide-react'
 import {
   getCallTasks,
   getTimeline,
@@ -85,22 +86,23 @@ function OutcomePanel({
       <div className="grid grid-cols-2 gap-2">
         {(
           [
-            { val: 'reached_paid', label: 'Ödeme Aldım' },
-            { val: 'reached_promised', label: 'Söz Aldım' },
-            { val: 'unreachable', label: 'Ulaşamadım' },
-            { val: 'postponed', label: 'Ertele' },
+            { val: 'reached_paid', label: 'Ödeme Aldım', icon: CheckCircle2, color: 'text-emerald-600' },
+            { val: 'reached_promised', label: 'Söz Aldım', icon: CalendarClock, color: 'text-amber-600' },
+            { val: 'unreachable', label: 'Ulaşamadım', icon: PhoneOff, color: 'text-red-500' },
+            { val: 'postponed', label: 'Ertele', icon: Clock, color: 'text-sky-600' },
           ] as const
-        ).map(({ val, label }) => (
+        ).map(({ val, label, icon: Icon, color }) => (
           <button
             key={val}
             type="button"
             onClick={() => { setOutcome(val); setError('') }}
-            className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
               outcome === val
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-background border-border hover:bg-muted'
             }`}
           >
+            <Icon size={14} className={outcome === val ? '' : color} />
             {label}
           </button>
         ))}
@@ -224,6 +226,7 @@ function TaskCard({ task }: { task: CallTask }) {
           </p>
           {task.phone && (
             <p className="text-xs text-muted-foreground tabular-nums">
+              <Phone size={11} className="inline mr-0.5" />
               <a href={`tel:${task.phone}`} className="hover:underline">
                 {task.phone}
               </a>
@@ -260,20 +263,20 @@ function TaskCard({ task }: { task: CallTask }) {
         </p>
       )}
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-3">
         <button
           type="button"
           onClick={() => { setExpanded((v) => !v); setShowTimeline(false) }}
-          className="text-xs text-primary hover:underline"
+          className="text-xs text-primary hover:underline flex items-center gap-1"
         >
-          {expanded ? 'Kapat' : 'Arama Yap'}
+          <PhoneCall size={12} />{expanded ? 'Kapat' : 'Arama Yap'}
         </button>
         <button
           type="button"
           onClick={() => { setShowTimeline((v) => !v); setExpanded(false) }}
-          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          className="text-xs text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1"
         >
-          {showTimeline ? 'Geçmişi Kapat' : 'Geçmiş'}
+          <History size={12} />{showTimeline ? 'Geçmişi Kapat' : 'Geçmiş'}
         </button>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { AlertCircle, CalendarClock, CalendarCheck, ChevronDown, ChevronUp } from 'lucide-react'
 import { getDailyDashboard, type DashboardBucketItem } from '@/api/payments'
 import { formatMoney, formatDate } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge'
@@ -57,29 +58,59 @@ function BucketTable({ items }: { items: DashboardBucketItem[] }) {
 
 type Bucket = 'today' | 'overdue' | 'tomorrow'
 
+const BUCKET_CONFIG = {
+  today: {
+    label: 'Bugün Vadesi Gelen',
+    icon: CalendarCheck,
+    accent: 'bg-amber-50 border-amber-200',
+    headerBg: 'bg-amber-50 border-amber-200',
+    headerText: 'text-amber-800',
+    iconColor: 'text-amber-500',
+  },
+  overdue: {
+    label: 'Gecikmiş',
+    icon: AlertCircle,
+    accent: 'bg-red-50 border-red-200',
+    headerBg: 'bg-red-50 border-red-200',
+    headerText: 'text-red-800',
+    iconColor: 'text-red-500',
+  },
+  tomorrow: {
+    label: 'Yarın Vadesi Gelen',
+    icon: CalendarClock,
+    accent: 'bg-sky-50 border-sky-200',
+    headerBg: 'bg-sky-50 border-sky-200',
+    headerText: 'text-sky-800',
+    iconColor: 'text-sky-500',
+  },
+} as const
+
 function StatCard({
-  label,
+  bucket,
   count,
-  accent,
   active,
   onClick,
 }: {
-  label: string
+  bucket: Bucket
   count: number
-  accent: string
   active: boolean
   onClick: () => void
 }) {
+  const cfg = BUCKET_CONFIG[bucket]
+  const Icon = cfg.icon
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-lg border p-5 text-left transition-colors ${
-        active ? accent : 'bg-card border-border hover:bg-muted/40'
+      className={`flex-1 rounded-lg border p-5 text-left transition-all ${
+        active ? cfg.accent : 'bg-card border-border hover:bg-muted/40'
       }`}
     >
-      <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-      <p className="text-3xl font-bold tabular-nums text-foreground">{count}</p>
-      <p className="text-xs text-muted-foreground mt-1">taksit</p>
+      <div className="flex items-center justify-between mb-3">
+        <Icon size={18} className={active ? cfg.iconColor : 'text-muted-foreground'} />
+        {active ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+      </div>
+      <p className="text-2xl font-bold tabular-nums text-foreground">{count}</p>
+      <p className="text-xs text-muted-foreground mt-1">{cfg.label}</p>
     </button>
   )
 }
@@ -106,53 +137,28 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="flex gap-3 mb-5">
-            <StatCard
-              label="Bugün Vadesi Gelen"
-              count={data.due_today_count}
-              accent="bg-amber-50 border-amber-200"
-              active={open === 'today'}
-              onClick={() => toggle('today')}
-            />
-            <StatCard
-              label="Gecikmiş"
-              count={data.overdue_count}
-              accent="bg-red-50 border-red-200"
-              active={open === 'overdue'}
-              onClick={() => toggle('overdue')}
-            />
-            <StatCard
-              label="Yarın Vadesi Gelen"
-              count={data.due_tomorrow_count}
-              accent="bg-sky-50 border-sky-200"
-              active={open === 'tomorrow'}
-              onClick={() => toggle('tomorrow')}
-            />
+            <StatCard bucket="today" count={data.due_today_count} active={open === 'today'} onClick={() => toggle('today')} />
+            <StatCard bucket="overdue" count={data.overdue_count} active={open === 'overdue'} onClick={() => toggle('overdue')} />
+            <StatCard bucket="tomorrow" count={data.due_tomorrow_count} active={open === 'tomorrow'} onClick={() => toggle('tomorrow')} />
           </div>
 
-          {open === 'today' && (
-            <div className="border border-amber-200 rounded-lg overflow-hidden mb-4">
-              <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200">
-                <span className="text-xs font-medium text-amber-800">Bugün Vadesi Gelen</span>
+          {(['today', 'overdue', 'tomorrow'] as const).map((bucket) => {
+            if (open !== bucket) return null
+            const cfg = BUCKET_CONFIG[bucket]
+            const items = bucket === 'today' ? data.due_today : bucket === 'overdue' ? data.overdue : data.due_tomorrow
+            const Icon = cfg.icon
+            return (
+              <div key={bucket} className={`border rounded-lg overflow-hidden mb-4 ${cfg.accent}`}>
+                <div className={`px-4 py-2.5 border-b flex items-center gap-2 ${cfg.headerBg} ${cfg.accent.split(' ')[1]}`}>
+                  <Icon size={14} className={cfg.iconColor} />
+                  <span className={`text-xs font-medium ${cfg.headerText}`}>{cfg.label}</span>
+                </div>
+                <div className="bg-card">
+                  <BucketTable items={items} />
+                </div>
               </div>
-              <BucketTable items={data.due_today} />
-            </div>
-          )}
-          {open === 'overdue' && (
-            <div className="border border-red-200 rounded-lg overflow-hidden mb-4">
-              <div className="px-4 py-2.5 bg-red-50 border-b border-red-200">
-                <span className="text-xs font-medium text-red-800">Gecikmiş Taksitler</span>
-              </div>
-              <BucketTable items={data.overdue} />
-            </div>
-          )}
-          {open === 'tomorrow' && (
-            <div className="border border-sky-200 rounded-lg overflow-hidden mb-4">
-              <div className="px-4 py-2.5 bg-sky-50 border-b border-sky-200">
-                <span className="text-xs font-medium text-sky-800">Yarın Vadesi Gelen</span>
-              </div>
-              <BucketTable items={data.due_tomorrow} />
-            </div>
-          )}
+            )
+          })}
         </>
       )}
     </div>

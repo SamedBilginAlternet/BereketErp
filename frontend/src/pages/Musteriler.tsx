@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Plus, Search, Pencil, Trash2, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -180,18 +181,21 @@ export default function Musteriler() {
           )}
         </div>
         <button onClick={() => setModal('create')} className={btnPrimary}>
-          + Yeni Müşteri
+          <Plus size={14} className="inline mr-1" />Yeni Müşteri
         </button>
       </div>
 
-      <input
-        type="search"
-        placeholder="Ad veya telefon ile ara…"
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-primary/40"
-        autoFocus
-      />
+      <div className="relative w-full max-w-sm mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="search"
+          placeholder="Ad veya telefon ile ara…"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          autoFocus
+        />
+      </div>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Yükleniyor…</p>
@@ -225,22 +229,19 @@ export default function Musteriler() {
                     {c.phone ?? '—'}
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground tabular-nums text-xs">
-                    {c.ledger_name
-                      ? `${c.ledger_name} / ${c.ledger_page ?? '?'} / ${c.ledger_row ?? '?'}`
-                      : '—'}
+                    {c.ledger_name ? (
+                      <span className="inline-flex items-center gap-1">
+                        <BookOpen size={12} className="shrink-0" />
+                        {c.ledger_name}/{c.ledger_page ?? '?'}/{c.ledger_row ?? '?'}
+                      </span>
+                    ) : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right space-x-2">
-                    <button
-                      onClick={() => setModal(c)}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Düzenle
+                  <td className="px-4 py-2.5 text-right space-x-3">
+                    <button onClick={() => setModal(c)} className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1 text-xs">
+                      <Pencil size={13} />Düzenle
                     </button>
-                    <button
-                      onClick={() => handleDelete(c)}
-                      className="text-xs text-status-overdue hover:underline"
-                    >
-                      Sil
+                    <button onClick={() => handleDelete(c)} className="text-muted-foreground hover:text-red-500 transition-colors inline-flex items-center gap-1 text-xs">
+                      <Trash2 size={13} />Sil
                     </button>
                   </td>
                 </tr>
@@ -256,19 +257,11 @@ export default function Musteriler() {
             Sayfa {data.meta.current_page} / {data.meta.last_page}
           </span>
           <div className="flex gap-2">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="px-3 py-1 rounded border border-border disabled:opacity-40"
-            >
-              ← Önceki
+            <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 rounded border border-border disabled:opacity-40 flex items-center gap-1">
+              <ChevronLeft size={14} />Önceki
             </button>
-            <button
-              disabled={page === data.meta.last_page}
-              onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1 rounded border border-border disabled:opacity-40"
-            >
-              Sonraki →
+            <button disabled={page === data.meta.last_page} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 rounded border border-border disabled:opacity-40 flex items-center gap-1">
+              Sonraki<ChevronRight size={14} />
             </button>
           </div>
         </div>

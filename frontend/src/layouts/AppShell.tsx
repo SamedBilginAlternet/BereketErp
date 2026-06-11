@@ -1,14 +1,23 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Users,
+  ShoppingBag,
+  BookOpen,
+  Upload,
+  PhoneCall,
+  LogOut,
+} from 'lucide-react'
 import { logout } from '@/api/auth'
 import { clearAuth } from '@/store/auth'
 
 const navItems = [
-  { to: '/', label: 'Panel', end: true },
-  { to: '/musteriler', label: 'Müşteriler' },
-  { to: '/satislar', label: 'Satışlar' },
-  { to: '/defter', label: 'Defter Aktarımı' },
-  { to: '/aktarim', label: 'CSV Aktarım' },
-  { to: '/tahsilat', label: 'Tahsilat' },
+  { to: '/', label: 'Panel', icon: LayoutDashboard, end: true },
+  { to: '/musteriler', label: 'Müşteriler', icon: Users },
+  { to: '/satislar', label: 'Satışlar', icon: ShoppingBag },
+  { to: '/defter', label: 'Defter Aktarımı', icon: BookOpen },
+  { to: '/aktarim', label: 'CSV Aktarım', icon: Upload },
+  { to: '/tahsilat', label: 'Tahsilat', icon: PhoneCall },
 ]
 
 export default function AppShell() {
@@ -26,33 +35,40 @@ export default function AppShell() {
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-52 border-r border-border flex flex-col shrink-0">
+      <aside className="w-56 border-r border-border flex flex-col shrink-0">
         <div className="px-5 py-4 border-b border-border">
-          <span className="font-semibold text-sm text-foreground">Bereket ERP</span>
+          <span className="font-bold text-sm text-foreground tracking-tight">Bereket ERP</span>
+          <p className="text-xs text-muted-foreground mt-0.5">Tekstil Yönetim</p>
         </div>
-        <nav className="flex-1 py-3">
-          {navItems.map((item) => (
+        <nav className="flex-1 py-2">
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
+              key={to}
+              to={to}
+              end={end}
               className={({ isActive }) =>
-                `block px-5 py-2 text-sm transition-colors ${
+                `flex items-center gap-2.5 px-4 py-2 text-sm transition-colors ${
                   isActive
-                    ? 'text-primary font-medium bg-muted'
+                    ? 'text-primary font-medium bg-primary/8'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`
               }
             >
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  <Icon size={16} className={isActive ? 'text-primary' : ''} />
+                  {label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-3 border-t border-border">
+        <div className="px-4 py-3 border-t border-border">
           <button
             onClick={handleLogout}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
           >
+            <LogOut size={14} />
             Çıkış Yap
           </button>
         </div>

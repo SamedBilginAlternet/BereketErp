@@ -6,6 +6,7 @@ const navItems = [
   { to: '/', label: 'Panel', end: true },
   { to: '/musteriler', label: 'Müşteriler' },
   { to: '/satislar', label: 'Satışlar' },
+  { to: '/defter', label: 'Defter Aktarımı' },
   { to: '/tahsilat', label: 'Tahsilat' },
 ]
 

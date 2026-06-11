@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\V1\SaleResource;
+use App\Models\Customer;
+use App\Services\InstallmentService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class LedgerController extends Controller
+{
+    public function __construct(private InstallmentService $installmentService) {}
+
+    public function store(Request $request): JsonResponse
+    {
+        $v = $request->validate([
+            'ledger_name'       => ['required', 'string', 'max:50'],
+            'ledger_page'       => ['required', 'integer', 'min:1'],
+            'ledger_row'        => ['required', 'integer', 'min:1'],
+            'name'              => ['required', 'string', 'max:255'],
+            'phone'             => ['nullable', 'string', 'max:20'],
+            'description'       => ['nullable', 'string', 'max:500'],
+            'total_amount'      => ['required', 'numeric', 'min:0.01'],
+            'down_payment'      => ['required', 'numeric', 'min:0'],
+            'installment_count' => ['required', 'integer', 'min:1', 'max:60'],
+            'sale_date'         => ['required', 'date'],
+            'first_due_date'    => ['required', 'date'],
+        ]);
+
+        $sale = DB::transaction(function () use ($v, $request) {
+            $customer = Customer::create([
+                'name'        => $v['name'],
+                'phone'       => $v['phone'] ?? null,
+                'ledger_name' => $v['ledger_name'],
+                'ledger_page' => $v['ledger_page'],
+                'ledger_row'  => $v['ledger_row'],
+            ]);
+
+            return $this->installmentService->createSale(
+                customer: $customer,
+                user: $request->user(),
+                totalAmount: (string) $v['total_amount'],
+                downPayment: (string) $v['down_payment'],
+                installmentCount: (int) $v['installment_count'],
+                firstDueDate: $v['first_due_date'],
+                saleDate: $v['sale_date'],
+                description: $v['description'] ?? null,
+            );
+        });
+
+        return (new SaleResource($sale->load(['customer', 'installments'])))
+            ->response()
+            ->setStatusCode(201);
+    }
+}

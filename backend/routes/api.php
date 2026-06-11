@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\SaleController;
@@ -28,5 +29,8 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard/daily', [DashboardController::class, 'daily']);
 
         Route::post('ledger/entry', [LedgerController::class, 'store']);
+
+        Route::get('imports/template', [ImportController::class, 'template']);
+        Route::post('imports/ledger', [ImportController::class, 'store']);
     });
 });

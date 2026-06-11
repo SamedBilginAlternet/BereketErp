@@ -9,6 +9,7 @@ import MusteriDetay from '@/pages/MusteriDetay'
 import YeniSatis from '@/pages/YeniSatis'
 import DefterAktarim from '@/pages/DefterAktarim'
 import Aktarim from '@/pages/Aktarim'
+import Tahsilat from '@/pages/Tahsilat'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -29,7 +30,7 @@ export default function App() {
               <Route path="/satislar/yeni" element={<YeniSatis />} />
               <Route path="/defter" element={<DefterAktarim />} />
               <Route path="/aktarim" element={<Aktarim />} />
-              <Route path="/tahsilat" element={<div className="p-6">Tahsilat</div>} />
+              <Route path="/tahsilat" element={<Tahsilat />} />
             </Route>
           </Route>
         </Routes>

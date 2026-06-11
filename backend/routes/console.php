@@ -12,3 +12,6 @@ Artisan::command('inspire', function () {
 
 // Daily at 06:00 Istanbul time — mark overdue installments
 Schedule::command('app:refresh-overdue-installments')->dailyAt('06:00');
+
+// Daily at 06:05 Istanbul time — build today's call list
+Schedule::command('app:generate-call-tasks')->dailyAt('06:05');

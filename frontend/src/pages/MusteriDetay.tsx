@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getCustomer } from '@/api/customers'
 import { getCustomerBalance, recordPayment } from '@/api/payments'
 import { getCustomerSales } from '@/api/sales'
+import { getTimeline } from '@/api/callTasks'
 import { formatMoney, formatDate } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge'
 import type { Installment } from '@/api/sales'
@@ -130,6 +131,11 @@ export default function MusteriDetay() {
     queryFn: () => getCustomerSales(customerId),
   })
 
+  const { data: timeline } = useQuery({
+    queryKey: ['timeline', customerId],
+    queryFn: () => getTimeline(customerId),
+  })
+
   if (!customer) return <div className="p-6 text-sm text-muted-foreground">Yükleniyor…</div>
 
   return (
@@ -246,6 +252,40 @@ export default function MusteriDetay() {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Bu müşteriye ait satış kaydı yok.</p>
+      )}
+
+      {/* Timeline */}
+      {timeline && timeline.length > 0 && (
+        <div className="mt-6 border border-border rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 bg-muted border-b border-border">
+            <span className="text-xs font-medium text-foreground">Geçmiş</span>
+          </div>
+          <div className="p-4 space-y-2">
+            {timeline.map((ev, i) => (
+              <div key={i} className="flex gap-3 text-xs">
+                <span className="tabular-nums text-muted-foreground shrink-0 w-20">
+                  {formatDate(ev.date)}
+                </span>
+                <div>
+                  <span
+                    className={`font-medium ${
+                      ev.type === 'payment'
+                        ? 'text-emerald-700'
+                        : ev.type === 'call'
+                          ? 'text-sky-700'
+                          : 'text-foreground'
+                    }`}
+                  >
+                    {ev.title}
+                  </span>
+                  {ev.detail && (
+                    <span className="text-muted-foreground ml-1">— {ev.detail}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {payingInstallment && (

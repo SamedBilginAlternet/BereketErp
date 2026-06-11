@@ -183,91 +183,76 @@ export default function MusteriDetay() {
     queryFn: () => getTimeline(customerId),
   })
 
-  if (!customer) return <div className="p-6 text-sm text-muted-foreground">Yükleniyor…</div>
+  if (!customer) return <div className="px-8 py-6 text-sm text-muted-foreground">Yükleniyor…</div>
 
   return (
-    <div className="p-6 max-w-3xl">
-      <div className="flex items-center gap-2 mb-5">
-        <Link to="/musteriler" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+    <div className="h-full flex flex-col">
+      {/* Page header */}
+      <div className="px-8 pt-6 pb-5 border-b border-border">
+        <Link to="/musteriler" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3">
           <ArrowLeft size={13} />Müşteriler
         </Link>
-      </div>
-
-      {/* Customer header */}
-      <div className="bg-card border border-border rounded-lg p-5 mb-5">
-        <h1 className="text-lg font-semibold text-foreground">{customer.name}</h1>
-        {customer.phone && (
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            <Phone size={13} />{customer.phone}
-          </p>
-        )}
-        {customer.ledger_name && (
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-            <BookOpen size={12} />
-            <span className="font-medium">{customer.ledger_name}</span>
-            {customer.ledger_page && ` / Sayfa: ${customer.ledger_page}`}
-            {customer.ledger_row && ` / Satır: ${customer.ledger_row}`}
-          </p>
-        )}
-      </div>
-
-      {/* Balance summary */}
-      {balance && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Wallet size={13} className="text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Toplam Borç</p>
-            </div>
-            <p className="text-lg font-semibold tabular-nums text-foreground">
-              {formatMoney(balance.total_debt)}
-            </p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <CreditCard size={13} className="text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Kalan Taksit</p>
-            </div>
-            <p className="text-lg font-semibold tabular-nums text-foreground">
-              {balance.remaining_installments}
-            </p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Calendar size={13} className="text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Sıradaki Ödeme</p>
-            </div>
-            {balance.next_due_date ? (
-              <>
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {formatMoney(balance.next_payment_amount ?? '0')}
-                </p>
-                <p className="text-xs text-muted-foreground">{formatDate(balance.next_due_date)}</p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">—</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Sales / installments */}
-      {salesData && salesData.length > 0 ? (
-        <div className="space-y-4">
-          {salesData.map((sale) => (
-            <div key={sale.id} className="border border-border rounded-lg overflow-hidden">
-              <div className="px-4 py-3 bg-muted flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-medium text-foreground">
-                    {sale.description ?? `Satış #${sale.id}`}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-2">{formatDate(sale.sale_date)}</span>
-                </div>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  Toplam: {formatMoney(sale.total_amount)}
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">{customer.name}</h1>
+            <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+              {customer.phone && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Phone size={13} />{customer.phone}
                 </span>
+              )}
+              {customer.ledger_name && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <BookOpen size={13} />
+                  Defter {customer.ledger_name}
+                  {customer.ledger_page && ` · Sayfa ${customer.ledger_page}`}
+                  {customer.ledger_row && ` · Satır ${customer.ledger_row}`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Inline balance stats */}
+          {balance && (
+            <div className="flex items-center gap-6 shrink-0">
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end"><Wallet size={11} />Toplam Borç</p>
+                <p className="text-lg font-bold tabular-nums text-foreground">{formatMoney(balance.total_debt)}</p>
               </div>
-              <div className="p-4">
+              <div className="w-px h-8 bg-border" />
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end"><CreditCard size={11} />Kalan Taksit</p>
+                <p className="text-lg font-bold tabular-nums text-foreground">{balance.remaining_installments}</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end"><Calendar size={11} />Sıradaki</p>
+                {balance.next_due_date ? (
+                  <>
+                    <p className="text-lg font-bold tabular-nums text-foreground">{formatMoney(balance.next_payment_amount ?? '0')}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(balance.next_due_date)}</p>
+                  </>
+                ) : <p className="text-lg font-bold text-muted-foreground">—</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto px-8 py-6 space-y-8">
+        {/* Sales / installments */}
+        {salesData && salesData.length > 0 ? (
+          <div className="space-y-6">
+            {salesData.map((sale) => (
+              <div key={sale.id}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-foreground">{sale.description ?? `Satış #${sale.id}`}</span>
+                    <span className="text-xs text-muted-foreground">{formatDate(sale.sale_date)}</span>
+                  </div>
+                  <span className="text-sm tabular-nums font-semibold text-foreground">{formatMoney(sale.total_amount)}</span>
+                </div>
                 <DataTable
                   data={sale.installments}
                   columns={buildInstallmentColumns(setPayingInstallment)}
@@ -277,46 +262,35 @@ export default function MusteriDetay() {
                   emptyText="Taksit kaydı yok."
                 />
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">Bu müşteriye ait satış kaydı yok.</p>
-      )}
-
-      {/* Timeline */}
-      {timeline && timeline.length > 0 && (
-        <div className="mt-6 border border-border rounded-lg overflow-hidden">
-          <div className="px-4 py-2.5 bg-muted border-b border-border">
-            <span className="text-xs font-medium text-foreground">Geçmiş</span>
-          </div>
-          <div className="p-4 space-y-2">
-            {timeline.map((ev, i) => (
-              <div key={i} className="flex gap-3 text-xs">
-                <span className="tabular-nums text-muted-foreground shrink-0 w-20">
-                  {formatDate(ev.date)}
-                </span>
-                <div>
-                  <span
-                    className={`font-medium ${
-                      ev.type === 'payment'
-                        ? 'text-emerald-700'
-                        : ev.type === 'call'
-                          ? 'text-sky-700'
-                          : 'text-foreground'
-                    }`}
-                  >
-                    {ev.title}
-                  </span>
-                  {ev.detail && (
-                    <span className="text-muted-foreground ml-1">— {ev.detail}</span>
-                  )}
-                </div>
-              </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">Bu müşteriye ait satış kaydı yok.</p>
+        )}
+
+        {/* Timeline */}
+        {timeline && timeline.length > 0 && (
+          <div>
+            <p className="text-sm font-medium text-foreground mb-3">Geçmiş</p>
+            <div className="space-y-2.5">
+              {timeline.map((ev, i) => (
+                <div key={i} className="flex gap-4 text-sm">
+                  <span className="tabular-nums text-muted-foreground shrink-0 w-24 pt-px">{formatDate(ev.date)}</span>
+                  <div className="flex items-start gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${ev.type === 'payment' ? 'bg-emerald-500' : ev.type === 'call' ? 'bg-sky-500' : 'bg-border'}`} />
+                    <div>
+                      <span className={`font-medium ${ev.type === 'payment' ? 'text-emerald-700' : ev.type === 'call' ? 'text-sky-700' : 'text-foreground'}`}>
+                        {ev.title}
+                      </span>
+                      {ev.detail && <span className="text-muted-foreground ml-1.5 text-xs">— {ev.detail}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {payingInstallment && (
         <PaymentModal

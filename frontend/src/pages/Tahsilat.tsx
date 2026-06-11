@@ -304,11 +304,12 @@ export default function Tahsilat() {
   const done = data?.filter((t) => t.status !== 'pending') ?? []
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-lg font-semibold text-foreground mb-1">Tahsilat</h1>
-      <p className="text-xs text-muted-foreground mb-5">
-        Bugünün arama listesi. Her kart için sonucu kaydedin.
-      </p>
+    <div className="h-full flex flex-col">
+      <div className="px-8 pt-7 pb-5 border-b border-border">
+        <h1 className="text-xl font-semibold text-foreground">Tahsilat</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Bugünün arama listesi</p>
+      </div>
+      <div className="flex-1 overflow-auto px-8 py-6">
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Yükleniyor…</p>
@@ -343,6 +344,7 @@ export default function Tahsilat() {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

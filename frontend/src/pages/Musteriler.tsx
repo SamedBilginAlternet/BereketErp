@@ -172,30 +172,32 @@ export default function Musteriler() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full flex flex-col">
+      {/* Page header */}
+      <div className="px-8 pt-7 pb-5 border-b border-border flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Müşteriler</h1>
-          {data && (
-            <p className="text-xs text-muted-foreground mt-0.5">{data.meta.total} kayıt</p>
-          )}
+          <h1 className="text-xl font-semibold text-foreground">Müşteriler</h1>
+          {data && <p className="text-sm text-muted-foreground mt-0.5">{data.meta.total} kayıt</p>}
         </div>
-        <button onClick={() => setModal('create')} className={btnPrimary}>
-          <Plus size={14} className="inline mr-1" />Yeni Müşteri
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="search"
+              placeholder="Ad veya telefon ile ara…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="w-64 rounded-md border border-border bg-background pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              autoFocus
+            />
+          </div>
+          <button onClick={() => setModal('create')} className={btnPrimary}>
+            <Plus size={14} className="inline mr-1" />Yeni Müşteri
+          </button>
+        </div>
       </div>
 
-      <div className="relative w-full max-w-sm mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        <input
-          type="search"
-          placeholder="Ad veya telefon ile ara…"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          autoFocus
-        />
-      </div>
+      <div className="flex-1 overflow-auto px-8 py-6">
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Yükleniyor…</p>
@@ -273,6 +275,7 @@ export default function Musteriler() {
           onClose={() => setModal(null)}
         />
       )}
+      </div>
     </div>
   )
 }

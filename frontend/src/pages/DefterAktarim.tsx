@@ -180,11 +180,15 @@ export default function DefterAktarim() {
     }`
 
   return (
-    <div className="p-6 max-w-lg">
-      <h1 className="text-lg font-semibold text-foreground mb-1">Defter Aktarımı</h1>
-      <p className="text-xs text-muted-foreground mb-5">
-        Her alanda Enter ile sonraki alana geçin. Son alanda Enter kayıt oluşturur.
-      </p>
+    <div className="h-full flex flex-col">
+      <div className="px-8 pt-7 pb-5 border-b border-border">
+        <h1 className="text-xl font-semibold text-foreground">Defter Aktarımı</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Her alanda Enter ile sonraki alana geçin. Son alanda Enter kayıt oluşturur.
+        </p>
+      </div>
+      <div className="flex-1 overflow-auto px-8 py-6">
+      <div className="max-w-lg">
 
       {saved && (
         <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm">
@@ -315,6 +319,8 @@ export default function DefterAktarim() {
             {mutation.isPending ? 'Kaydediliyor…' : 'Kaydet (Enter)'}
           </button>
         </div>
+      </div>
+      </div>
       </div>
     </div>
   )

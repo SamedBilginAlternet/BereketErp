@@ -55,13 +55,17 @@ export default function Aktarim() {
   })
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-lg font-semibold text-foreground mb-1">Excel / CSV Aktarım</h1>
-      <p className="text-xs text-muted-foreground mb-5">
-        Şablonu indirin, doldurun, yükleyin. Her satır bağımsız olarak doğrulanır.
-      </p>
+    <div className="h-full flex flex-col">
+      <div className="px-8 pt-7 pb-5 border-b border-border">
+        <h1 className="text-xl font-semibold text-foreground">Excel / CSV Aktarım</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Şablonu indirin, doldurun, yükleyin. Her satır bağımsız olarak doğrulanır.
+        </p>
+      </div>
+      <div className="flex-1 overflow-auto px-8 py-6">
+      <div className="max-w-2xl">
 
-      <div className="bg-card border border-border rounded-lg p-5 mb-5">
+      <div className="border border-border rounded-lg p-5 mb-5">
         <div className="flex items-center gap-3 mb-5">
           <button
             type="button"
@@ -161,6 +165,8 @@ export default function Aktarim() {
           )}
         </div>
       )}
+      </div>
+      </div>
     </div>
   )
 }

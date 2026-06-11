@@ -19,6 +19,8 @@ export interface CallTask {
   due_date: string
   inst_status: string
   last_log: CallLog | null
+  postpone_count: number
+  last_promise_date?: string | null
 }
 
 export interface CallLog {

@@ -40,6 +40,8 @@ class CallTaskController extends Controller
                 'due_date'       => $t->installment->due_date,
                 'inst_status'    => $t->installment->status,
                 'last_log'       => $t->callLogs->last(),
+                'postpone_count' => $t->callLogs->filter(fn ($l) => in_array($l->outcome, ['postponed', 'reached_promised']))->count(),
+                'last_promise_date' => $t->callLogs->where('outcome', 'reached_promised')->sortByDesc('called_at')->first()?->promise_date?->toDateString(),
             ]);
 
         return response()->json(['data' => $tasks]);

@@ -218,6 +218,16 @@ function TaskCard({ task }: { task: CallTask }) {
             <span className={`text-xs ${TASK_STATUS_COLOR[task.status]}`}>
               {TASK_STATUS_LABEL[task.status]}
             </span>
+            {task.postpone_count > 0 && (
+              <span className="text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                {task.postpone_count}. erteleme
+              </span>
+            )}
+            {task.status === 'promised' && task.last_promise_date && (
+              <span className="text-xs text-sky-600">
+                Söz: {formatDate(task.last_promise_date)}
+              </span>
+            )}
           </div>
           <p className="text-sm font-semibold text-foreground">
             <Link to={`/musteriler/${task.customer_id}`} className="hover:underline">

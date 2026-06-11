@@ -21,6 +21,9 @@ class GenerateCallTasks extends Command
 
         $inserted = 0;
 
+        // Priority 2: promised installments whose promise_date = today (re-queue)
+        $inserted += $this->insertPromiseBucket($today);
+
         // Priority 1: overdue (due_date < today, unpaid)
         $inserted += $this->insertBucket($today, null, $today, 1);
 
@@ -35,8 +38,48 @@ class GenerateCallTasks extends Command
         return self::SUCCESS;
     }
 
+    private function insertPromiseBucket(string $taskDate): int
+    {
+        $now  = now()->format('Y-m-d H:i:s');
+        $rows = DB::table('installments')
+            ->join('sales', 'sales.id', '=', 'installments.sale_id')
+            ->whereNull('sales.deleted_at')
+            ->whereIn('installments.status', [
+                InstallmentStatus::Pending->value,
+                InstallmentStatus::Partial->value,
+                InstallmentStatus::Overdue->value,
+            ])
+            ->whereExists(function ($q) use ($taskDate) {
+                $q->select(DB::raw(1))
+                    ->from('call_tasks')
+                    ->join('call_logs', 'call_logs.call_task_id', '=', 'call_tasks.id')
+                    ->whereColumn('call_tasks.installment_id', 'installments.id')
+                    ->where('call_logs.outcome', 'reached_promised')
+                    ->whereDate('call_logs.promise_date', $taskDate);
+            })
+            ->select(
+                DB::raw("'$taskDate' as task_date"),
+                'sales.customer_id',
+                'installments.id as installment_id',
+                DB::raw('2 as priority'),
+                DB::raw("'pending' as status"),
+            )
+            ->get()
+            ->map(fn ($r) => array_merge((array) $r, ['created_at' => $now, 'updated_at' => $now]))
+            ->toArray();
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        DB::table('call_tasks')->insertOrIgnore($rows);
+
+        return count($rows);
+    }
+
     private function insertBucket(string $taskDate, ?string $dueDateFrom, string $dueDateTo, int $priority): int
     {
+        $now   = now()->format('Y-m-d H:i:s');
         $query = DB::table('installments')
             ->join('sales', 'sales.id', '=', 'installments.sale_id')
             ->whereIn('installments.status', [
@@ -51,18 +94,19 @@ class GenerateCallTasks extends Command
                 'installments.id as installment_id',
                 DB::raw("$priority as priority"),
                 DB::raw("'pending' as status"),
-                DB::raw('NOW() as created_at'),
-                DB::raw('NOW() as updated_at'),
             );
 
         if ($dueDateFrom === null) {
             // overdue: due_date < taskDate
-            $query->where('installments.due_date', '<', $taskDate);
+            $query->whereDate('installments.due_date', '<', $taskDate);
         } else {
-            $query->whereBetween('installments.due_date', [$dueDateFrom, $dueDateTo]);
+            $query->whereDate('installments.due_date', '>=', $dueDateFrom)
+                  ->whereDate('installments.due_date', '<=', $dueDateTo);
         }
 
-        $rows = $query->get()->map(fn($r) => (array) $r)->toArray();
+        $rows = $query->get()
+            ->map(fn ($r) => array_merge((array) $r, ['created_at' => $now, 'updated_at' => $now]))
+            ->toArray();
 
         if (empty($rows)) {
             return 0;

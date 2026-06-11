@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Phone, BookOpen, Wallet, Calendar, CreditCard } from 'lucide-react'
+import { type ColumnDef } from '@tanstack/react-table'
 import { getCustomer } from '@/api/customers'
 import { getCustomerBalance, recordPayment } from '@/api/payments'
 import { getCustomerSales } from '@/api/sales'
 import { getTimeline } from '@/api/callTasks'
 import { formatMoney, formatDate } from '@/lib/format'
 import StatusBadge from '@/components/StatusBadge'
+import { DataTable } from '@/components/DataTable'
 import type { Installment } from '@/api/sales'
 
 function PaymentModal({
@@ -110,6 +112,50 @@ function PaymentModal({
       </div>
     </div>
   )
+}
+
+function buildInstallmentColumns(onPay: (i: Installment) => void): ColumnDef<Installment, unknown>[] {
+  return [
+    {
+      accessorKey: 'sequence',
+      header: '#',
+      cell: ({ getValue }) => <span className="tabular-nums text-muted-foreground">{getValue() as number}</span>,
+    },
+    {
+      accessorKey: 'amount',
+      header: 'Tutar',
+      cell: ({ getValue }) => <span className="tabular-nums font-medium">{formatMoney(getValue() as string)}</span>,
+    },
+    {
+      accessorKey: 'paid_amount',
+      header: 'Ödenen',
+      cell: ({ getValue }) => {
+        const v = getValue() as string
+        return <span className="tabular-nums text-muted-foreground">{Number(v) > 0 ? formatMoney(v) : '—'}</span>
+      },
+    },
+    {
+      accessorKey: 'due_date',
+      header: 'Vade',
+      cell: ({ getValue }) => <span className="tabular-nums">{formatDate(getValue() as string)}</span>,
+    },
+    {
+      accessorKey: 'status',
+      header: 'Durum',
+      cell: ({ getValue }) => <StatusBadge status={getValue() as string} />,
+    },
+    {
+      id: 'actions',
+      header: '',
+      enableSorting: false,
+      cell: ({ row }) =>
+        row.original.status !== 'paid' ? (
+          <button onClick={() => onPay(row.original)} className="text-xs text-primary hover:underline">
+            Ödeme Al
+          </button>
+        ) : null,
+    },
+  ]
 }
 
 export default function MusteriDetay() {
@@ -215,51 +261,22 @@ export default function MusteriDetay() {
                   <span className="text-sm font-medium text-foreground">
                     {sale.description ?? `Satış #${sale.id}`}
                   </span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {formatDate(sale.sale_date)}
-                  </span>
+                  <span className="text-xs text-muted-foreground ml-2">{formatDate(sale.sale_date)}</span>
                 </div>
                 <span className="text-xs tabular-nums text-muted-foreground">
                   Toplam: {formatMoney(sale.total_amount)}
                 </span>
               </div>
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">#</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Tutar</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Ödenen</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Vade</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Durum</th>
-                    <th className="px-4 py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sale.installments.map((inst) => (
-                    <tr key={inst.id} className="border-t border-border">
-                      <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{inst.sequence}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-right">{formatMoney(inst.amount)}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-right text-muted-foreground">
-                        {Number(inst.paid_amount) > 0 ? formatMoney(inst.paid_amount) : '—'}
-                      </td>
-                      <td className="px-4 py-2.5 tabular-nums">{formatDate(inst.due_date)}</td>
-                      <td className="px-4 py-2.5">
-                        <StatusBadge status={inst.status} />
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        {inst.status !== 'paid' && (
-                          <button
-                            onClick={() => setPayingInstallment(inst)}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Ödeme Al
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="p-4">
+                <DataTable
+                  data={sale.installments}
+                  columns={buildInstallmentColumns(setPayingInstallment)}
+                  searchPlaceholder="Vadeye göre ara…"
+                  searchColumn="due_date"
+                  pageSize={12}
+                  emptyText="Taksit kaydı yok."
+                />
+              </div>
             </div>
           ))}
         </div>

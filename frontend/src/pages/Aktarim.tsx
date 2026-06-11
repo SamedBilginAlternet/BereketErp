@@ -1,12 +1,16 @@
 import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { type ColumnDef } from '@tanstack/react-table'
 import { api } from '@/lib/api'
+import { DataTable } from '@/components/DataTable'
 
-interface ImportError {
-  row: number
-  field: string
-  message: string
-}
+interface ImportError { row: number; field: string; message: string }
+
+const errorColumns: ColumnDef<ImportError, unknown>[] = [
+  { accessorKey: 'row', header: 'Satır', cell: ({ getValue }) => <span className="tabular-nums text-muted-foreground">{getValue() as number}</span> },
+  { accessorKey: 'field', header: 'Alan', cell: ({ getValue }) => <code className="font-mono text-xs">{getValue() as string}</code> },
+  { accessorKey: 'message', header: 'Hata', cell: ({ getValue }) => <span className="text-xs text-red-600">{getValue() as string}</span> },
+]
 
 interface ImportResult {
   imported: number
@@ -143,30 +147,16 @@ export default function Aktarim() {
             </div>
           </div>
 
-          {/* Error table */}
           {result.errors.length > 0 && (
-            <div className="border border-border rounded-lg overflow-hidden">
-              <div className="px-4 py-2.5 bg-muted border-b border-border">
-                <span className="text-xs font-medium text-foreground">Hata Detayları</span>
-              </div>
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Satır</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Alan</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Hata</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.errors.map((err, i) => (
-                    <tr key={i} className="border-t border-border">
-                      <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{err.row}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs">{err.field}</td>
-                      <td className="px-4 py-2.5 text-xs text-red-600">{err.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div>
+              <p className="text-xs font-medium text-foreground mb-2">Hata Detayları</p>
+              <DataTable
+                data={result.errors}
+                columns={errorColumns}
+                searchPlaceholder="Hata ara…"
+                pageSize={15}
+                emptyText="Hata yok."
+              />
             </div>
           )}
         </div>

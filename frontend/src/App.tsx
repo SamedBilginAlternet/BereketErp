@@ -5,6 +5,7 @@ import AppShell from '@/layouts/AppShell'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Musteriler from '@/pages/Musteriler'
+import YeniSatis from '@/pages/YeniSatis'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -21,6 +22,7 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/musteriler" element={<Musteriler />} />
               <Route path="/satislar" element={<div className="p-6">Satışlar</div>} />
+              <Route path="/satislar/yeni" element={<YeniSatis />} />
               <Route path="/tahsilat" element={<div className="p-6">Tahsilat</div>} />
             </Route>
           </Route>

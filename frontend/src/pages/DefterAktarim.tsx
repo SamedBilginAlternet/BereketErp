@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { BookOpen, CheckCircle2 } from 'lucide-react'
@@ -98,12 +98,83 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+interface InstallmentRow {
+  amount: string
+  due_date: string
+  paid: boolean
+  paid_at: string
+}
+
+function addMonths(dateStr: string, months: number): string {
+  const d = new Date(dateStr)
+  d.setMonth(d.getMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
+
+function buildEqualRows(total: number, down: number, count: number, firstDueDate: string): InstallmentRow[] {
+  const financedCents = Math.round((total - down) * 100)
+  const baseCents = Math.floor(financedCents / count)
+  const remainder = financedCents - baseCents * count
+  const rows: InstallmentRow[] = []
+  for (let i = 0; i < count; i++) {
+    const cents = i === count - 1 ? baseCents + remainder : baseCents
+    rows.push({
+      amount: (cents / 100).toFixed(2),
+      due_date: addMonths(firstDueDate, i),
+      paid: false,
+      paid_at: '',
+    })
+  }
+  return rows
+}
+
 export default function DefterAktarim() {
   const navigate = useNavigate()
   const [values, setValues] = useState<FormValues>(defaultValues)
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({})
   const [saved, setSaved] = useState<Sale | null>(null)
+  const [installmentRows, setInstallmentRows] = useState<InstallmentRow[]>([])
   const refs = useRef<Partial<Record<FieldName, HTMLInputElement | HTMLTextAreaElement | null>>>({})
+
+  // Auto-compute installment rows when the 4 key fields change
+  useEffect(() => {
+    const total = Number(values.total_amount)
+    const down = Number(values.down_payment || '0')
+    const count = Number(values.installment_count)
+    const firstDue = values.first_due_date
+
+    if (!values.total_amount || !values.installment_count || !firstDue) return
+    if (isNaN(total) || isNaN(down) || isNaN(count) || count < 1) return
+    if (total <= 0) return
+
+    // Only auto-populate if count changed (or rows are empty)
+    if (installmentRows.length !== count) {
+      setInstallmentRows(buildEqualRows(total, down, count, firstDue))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.total_amount, values.down_payment, values.installment_count, values.first_due_date])
+
+  function resetToEqual() {
+    const total = Number(values.total_amount)
+    const down = Number(values.down_payment || '0')
+    const count = Number(values.installment_count)
+    const firstDue = values.first_due_date
+    if (!total || !count || !firstDue || isNaN(total) || isNaN(count) || count < 1) return
+    setInstallmentRows(buildEqualRows(total, down, count, firstDue))
+  }
+
+  const financedAmount = (() => {
+    const t = Number(values.total_amount || '0')
+    const d = Number(values.down_payment || '0')
+    return isNaN(t) || isNaN(d) ? 0 : Math.max(0, t - d)
+  })()
+
+  const rowsSum = installmentRows.reduce((acc, r) => {
+    const v = parseFloat(r.amount)
+    return acc + (isNaN(v) ? 0 : v)
+  }, 0)
+
+  const diff = Math.round((rowsSum - financedAmount) * 100) / 100
 
   const mutation = useMutation({
     mutationFn: createLedgerEntry,
@@ -111,6 +182,7 @@ export default function DefterAktarim() {
       setSaved(sale)
       setValues(defaultValues)
       setErrors({})
+      setInstallmentRows([])
       setTimeout(() => refs.current.ledger_page?.focus(), 50)
     },
     onError: (e: { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
@@ -152,6 +224,12 @@ export default function DefterAktarim() {
       if (firstErr) refs.current[firstErr]?.focus()
       return
     }
+
+    const paidInstallments = installmentRows
+      .map((r, i) => ({ sequence: i + 1, paid: r.paid, paid_at: r.paid_at }))
+      .filter((r) => r.paid && r.paid_at)
+      .map((r) => ({ sequence: r.sequence, paid_at: r.paid_at }))
+
     mutation.mutate({
       ledger_name: values.ledger_name.trim(),
       ledger_page: Number(values.ledger_page),
@@ -165,6 +243,8 @@ export default function DefterAktarim() {
       installment_count: Number(values.installment_count),
       sale_date: values.sale_date,
       first_due_date: values.first_due_date,
+      ...(installmentRows.length > 0 ? { amounts: installmentRows.map((r) => r.amount) } : {}),
+      ...(paidInstallments.length > 0 ? { paid_installments: paidInstallments } : {}),
     })
   }
 
@@ -339,6 +419,91 @@ export default function DefterAktarim() {
               ))}
             </div>
 
+            {/* Installment plan section */}
+            {installmentRows.length > 0 && (
+              <>
+                <SectionLabel>Taksit Planı</SectionLabel>
+
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="px-4 py-2 bg-muted/60 flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-muted-foreground">{installmentRows.length} taksit</span>
+                    <button
+                      type="button"
+                      onClick={resetToEqual}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Eşit Dağıt
+                    </button>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">#</th>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">Vade Tarihi</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium text-muted-foreground">Tutar (₺)</th>
+                        <th className="px-3 py-2 text-center text-[11px] font-medium text-muted-foreground">Ödendi?</th>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">Ödeme Tarihi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {installmentRows.map((row, idx) => (
+                        <tr key={idx} className="border-t border-border">
+                          <td className="px-3 py-1.5 tabular-nums text-muted-foreground text-xs">{idx + 1}</td>
+                          <td className="px-3 py-1.5 tabular-nums text-xs">{formatDate(row.due_date)}</td>
+                          <td className="px-3 py-1.5 text-right">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              value={row.amount}
+                              onChange={(e) => {
+                                const newRows = [...installmentRows]
+                                newRows[idx] = { ...newRows[idx], amount: e.target.value }
+                                setInstallmentRows(newRows)
+                              }}
+                              className="w-28 rounded border border-border bg-background px-2 py-1 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={row.paid}
+                              onChange={(e) => {
+                                const newRows = [...installmentRows]
+                                newRows[idx] = { ...newRows[idx], paid: e.target.checked, paid_at: e.target.checked ? today : '' }
+                                setInstallmentRows(newRows)
+                              }}
+                              className="accent-primary"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            {row.paid && (
+                              <input
+                                type="date"
+                                value={row.paid_at}
+                                onChange={(e) => {
+                                  const newRows = [...installmentRows]
+                                  newRows[idx] = { ...newRows[idx], paid_at: e.target.value }
+                                  setInstallmentRows(newRows)
+                                }}
+                                className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className={`px-4 py-2 border-t border-border text-xs font-medium ${diff !== 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    Toplam: {formatMoney(rowsSum.toFixed(2))}
+                    {diff !== 0 && (
+                      <span className="ml-2">— Fark: {diff > 0 ? '+' : ''}{formatMoney(diff.toFixed(2))}</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             <SectionLabel>Açıklama</SectionLabel>
 
             <div>
@@ -372,7 +537,7 @@ export default function DefterAktarim() {
               <button
                 type="button"
                 onClick={submit}
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || (installmentRows.length > 0 && diff !== 0)}
                 className="bg-primary text-primary-foreground rounded-lg px-6 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
               >
                 {mutation.isPending ? 'Kaydediliyor…' : 'Kaydet'}

@@ -16,13 +16,15 @@ class StoreSaleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => ['required', 'integer', 'exists:customers,id'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'total_amount' => ['required', 'numeric', 'min:0.01'],
-            'down_payment' => ['required', 'numeric', 'min:0'],
+            'customer_id'       => ['required', 'integer', 'exists:customers,id'],
+            'description'       => ['nullable', 'string', 'max:500'],
+            'total_amount'      => ['required', 'numeric', 'min:0.01'],
+            'down_payment'      => ['required', 'numeric', 'min:0'],
             'installment_count' => ['required', 'integer', 'min:1', 'max:60'],
-            'sale_date' => ['required', 'date'],
-            'first_due_date' => ['required', 'date'],
+            'sale_date'         => ['required', 'date'],
+            'first_due_date'    => ['required', 'date'],
+            'amounts'           => ['nullable', 'array'],
+            'amounts.*'         => ['numeric', 'min:0.01'],
         ];
     }
 

@@ -1,6 +1,11 @@
 import { api } from '@/lib/api'
 import type { Sale } from './sales'
 
+export interface PaidInstallmentPayload {
+  sequence: number
+  paid_at: string
+}
+
 export interface LedgerEntryPayload {
   ledger_name: string
   ledger_page: number
@@ -14,6 +19,8 @@ export interface LedgerEntryPayload {
   installment_count: number
   sale_date: string
   first_due_date: string
+  amounts?: string[]
+  paid_installments?: PaidInstallmentPayload[]
 }
 
 export async function createLedgerEntry(payload: LedgerEntryPayload): Promise<Sale> {

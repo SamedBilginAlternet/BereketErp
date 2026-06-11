@@ -36,18 +36,25 @@ class SaleController extends Controller
     public function preview(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'total_amount' => ['required', 'numeric', 'min:0.01'],
-            'down_payment' => ['required', 'numeric', 'min:0'],
+            'total_amount'     => ['required', 'numeric', 'min:0.01'],
+            'down_payment'     => ['required', 'numeric', 'min:0'],
             'installment_count' => ['required', 'integer', 'min:1', 'max:60'],
-            'first_due_date' => ['required', 'date'],
+            'first_due_date'   => ['required', 'date'],
+            'amounts'          => ['nullable', 'array'],
+            'amounts.*'        => ['numeric', 'min:0.01'],
         ]);
 
-        $schedule = $this->installmentService->preview(
-            (string) $validated['total_amount'],
-            (string) $validated['down_payment'],
-            (int) $validated['installment_count'],
-            $validated['first_due_date'],
-        );
+        try {
+            $schedule = $this->installmentService->preview(
+                (string) $validated['total_amount'],
+                (string) $validated['down_payment'],
+                (int) $validated['installment_count'],
+                $validated['first_due_date'],
+                isset($validated['amounts']) ? array_map('strval', $validated['amounts']) : null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => ['amounts' => [$e->getMessage()]]], 422);
+        }
 
         return response()->json(['data' => $schedule]);
     }
@@ -57,16 +64,21 @@ class SaleController extends Controller
         $v = $request->validated();
         $customer = Customer::findOrFail($v['customer_id']);
 
-        $sale = $this->installmentService->createSale(
-            customer: $customer,
-            user: $request->user(),
-            totalAmount: (string) $v['total_amount'],
-            downPayment: (string) $v['down_payment'],
-            installmentCount: (int) $v['installment_count'],
-            firstDueDate: $v['first_due_date'],
-            saleDate: $v['sale_date'],
-            description: $v['description'] ?? null,
-        );
+        try {
+            $sale = $this->installmentService->createSale(
+                customer: $customer,
+                user: $request->user(),
+                totalAmount: (string) $v['total_amount'],
+                downPayment: (string) $v['down_payment'],
+                installmentCount: (int) $v['installment_count'],
+                firstDueDate: $v['first_due_date'],
+                saleDate: $v['sale_date'],
+                description: $v['description'] ?? null,
+                customAmounts: isset($v['amounts']) ? array_map('strval', $v['amounts']) : null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => ['amounts' => [$e->getMessage()]]], 422);
+        }
 
         return (new SaleResource($sale))->response()->setStatusCode(201);
     }

@@ -35,6 +35,7 @@ export interface SalePayload {
   installment_count: number
   sale_date: string
   first_due_date: string
+  amounts?: string[]
 }
 
 export interface PreviewRow {
@@ -48,12 +49,14 @@ export async function previewInstallments(
   downPayment: number,
   installmentCount: number,
   firstDueDate: string,
+  amounts?: string[],
 ): Promise<PreviewRow[]> {
   const { data } = await api.post<{ data: PreviewRow[] }>('/sales/preview', {
     total_amount: totalAmount,
     down_payment: downPayment,
     installment_count: installmentCount,
     first_due_date: firstDueDate,
+    ...(amounts ? { amounts } : {}),
   })
   return data.data
 }

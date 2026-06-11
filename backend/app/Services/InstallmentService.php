@@ -11,12 +11,14 @@ use App\Models\Sale;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class InstallmentService
 {
     /**
      * Build a preview of the installment schedule without persisting.
      *
+     * @param  array<int, string>|null  $customAmounts  decimal strings like ['5000.00','4000.00']
      * @return array<int, array{sequence: int, amount: string, due_date: string}>
      */
     public function preview(
@@ -24,23 +26,33 @@ class InstallmentService
         string $downPayment,
         int $installmentCount,
         string $firstDueDate,
+        ?array $customAmounts = null,
     ): array {
+        $customAmountsKurus = null;
+        if ($customAmounts !== null) {
+            $financedKurus = $this->financedKurus($totalAmount, $downPayment);
+            $customAmountsKurus = $this->convertAndValidateCustomAmounts($customAmounts, $installmentCount, $financedKurus);
+        }
+
         $schedule = $this->buildSchedule(
             $totalAmount,
             $downPayment,
             $installmentCount,
             $firstDueDate,
+            $customAmountsKurus,
         );
 
         return array_map(fn ($row) => [
             'sequence' => $row['sequence'],
-            'amount' => number_format((float) $row['amount_kuruş'] / 100, 2, '.', ''),
+            'amount' => number_format((float) $row['amount_kurus'] / 100, 2, '.', ''),
             'due_date' => $row['due_date'],
         ], $schedule);
     }
 
     /**
      * Create a sale and its full installment schedule atomically.
+     *
+     * @param  array<int, string>|null  $customAmounts  decimal strings like ['5000.00','4000.00']
      */
     public function createSale(
         Customer $customer,
@@ -51,9 +63,14 @@ class InstallmentService
         string $firstDueDate,
         string $saleDate,
         ?string $description = null,
+        ?array $customAmounts = null,
     ): Sale {
         $financedKurus = $this->financedKurus($totalAmount, $downPayment);
-        $schedule = $this->buildSchedule($totalAmount, $downPayment, $installmentCount, $firstDueDate);
+        $customAmountsKurus = null;
+        if ($customAmounts !== null) {
+            $customAmountsKurus = $this->convertAndValidateCustomAmounts($customAmounts, $installmentCount, $financedKurus);
+        }
+        $schedule = $this->buildSchedule($totalAmount, $downPayment, $installmentCount, $firstDueDate, $customAmountsKurus);
 
         return DB::transaction(function () use (
             $customer, $user, $totalAmount, $downPayment,
@@ -76,7 +93,7 @@ class InstallmentService
                 Installment::create([
                     'sale_id' => $sale->id,
                     'sequence' => $row['sequence'],
-                    'amount' => number_format((float) $row['amount_kuruş'] / 100, 2, '.', ''),
+                    'amount' => number_format((float) $row['amount_kurus'] / 100, 2, '.', ''),
                     'paid_amount' => '0.00',
                     'due_date' => $row['due_date'],
                     'status' => InstallmentStatus::Pending,
@@ -88,23 +105,39 @@ class InstallmentService
     }
 
     /**
-     * Build installment rows in integer kuruş.
+     * Build installment rows in integer kurus.
      * The LAST installment absorbs any rounding remainder.
+     * If $customAmountsKurus is provided, use those values directly.
      *
-     * @return array<int, array{sequence: int, amount_kuruş: int, due_date: string}>
+     * @param  array<int, int>|null  $customAmountsKurus
+     * @return array<int, array{sequence: int, amount_kurus: int, due_date: string}>
      */
     private function buildSchedule(
         string $totalAmount,
         string $downPayment,
         int $installmentCount,
         string $firstDueDate,
+        ?array $customAmountsKurus = null,
     ): array {
+        $schedule = [];
+        $dueDate = Carbon::parse($firstDueDate);
+
+        if ($customAmountsKurus !== null) {
+            for ($i = 1; $i <= $installmentCount; $i++) {
+                $schedule[] = [
+                    'sequence' => $i,
+                    'amount_kurus' => $customAmountsKurus[$i - 1],
+                    'due_date' => $dueDate->toDateString(),
+                ];
+                $dueDate->addMonth();
+            }
+
+            return $schedule;
+        }
+
         $financedKurus = $this->financedKurus($totalAmount, $downPayment);
         $baseKurus = intdiv($financedKurus, $installmentCount);
         $remainder = $financedKurus - ($baseKurus * $installmentCount);
-
-        $schedule = [];
-        $dueDate = Carbon::parse($firstDueDate);
 
         for ($i = 1; $i <= $installmentCount; $i++) {
             $amount = $baseKurus;
@@ -113,13 +146,49 @@ class InstallmentService
             }
             $schedule[] = [
                 'sequence' => $i,
-                'amount_kuruş' => $amount,
+                'amount_kurus' => $amount,
                 'due_date' => $dueDate->toDateString(),
             ];
             $dueDate->addMonth();
         }
 
         return $schedule;
+    }
+
+    /**
+     * Convert decimal string amounts to kurus integers and validate count and sum.
+     *
+     * @param  array<int, string>  $customAmounts
+     * @return array<int, int>
+     *
+     * @throws InvalidArgumentException
+     */
+    private function convertAndValidateCustomAmounts(array $customAmounts, int $installmentCount, int $financedKurus): array
+    {
+        if (count($customAmounts) !== $installmentCount) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Özel tutar sayısı (%d) taksit sayısıyla (%d) eşleşmiyor.',
+                    count($customAmounts),
+                    $installmentCount,
+                )
+            );
+        }
+
+        $customAmountsKurus = array_map(fn ($a) => $this->toKurus((string) $a), $customAmounts);
+        $sumKurus = array_sum($customAmountsKurus);
+
+        if ($sumKurus !== $financedKurus) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Özel tutarların toplamı (%.2f ₺) finansman tutarıyla (%.2f ₺) eşleşmiyor.',
+                    $sumKurus / 100,
+                    $financedKurus / 100,
+                )
+            );
+        }
+
+        return $customAmountsKurus;
     }
 
     private function financedKurus(string $totalAmount, string $downPayment): int
@@ -129,7 +198,7 @@ class InstallmentService
 
     private function toKurus(string $amount): int
     {
-        // bcmath: multiply by 100, round to integer kuruş
+        // bcmath: multiply by 100, round to integer kurus
         return (int) bcmul($amount, '100', 0);
     }
 }

@@ -128,6 +128,45 @@ it('rejects sale with missing customer', function () {
         ->assertJsonValidationErrors(['customer_id']);
 });
 
+it('preview with custom amounts returns provided amounts', function () {
+    $this->withToken(saleUser())
+        ->postJson('/api/v1/sales/preview', [
+            'total_amount'      => 9000,
+            'down_payment'      => 0,
+            'installment_count' => 3,
+            'first_due_date'    => '2024-11-15',
+            'amounts'           => ['1000.00', '3000.00', '5000.00'],
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.0.amount', '1000.00')
+        ->assertJsonPath('data.1.amount', '3000.00')
+        ->assertJsonPath('data.2.amount', '5000.00');
+});
+
+it('create sale with custom amounts stores them correctly', function () {
+    $customer = Customer::factory()->create();
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/v1/sales', [
+            'customer_id'       => $customer->id,
+            'total_amount'      => 9000,
+            'down_payment'      => 0,
+            'installment_count' => 3,
+            'sale_date'         => '2024-10-01',
+            'first_due_date'    => '2024-11-01',
+            'amounts'           => ['1000.00', '3000.00', '5000.00'],
+        ])
+        ->assertCreated()
+        ->assertJsonCount(3, 'data.installments');
+
+    $installments = \App\Models\Installment::all()->sortBy('sequence')->values();
+    expect($installments[0]->amount)->toBe('1000.00');
+    expect($installments[1]->amount)->toBe('3000.00');
+    expect($installments[2]->amount)->toBe('5000.00');
+});
+
 it('shows sale with installments', function () {
     $customer = Customer::factory()->create();
     $user = User::factory()->create();

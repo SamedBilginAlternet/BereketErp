@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { BookOpen, CheckCircle2 } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { BookOpen, CheckCircle2, UserCheck } from 'lucide-react'
 import { createLedgerEntry } from '@/api/ledger'
+import { getCustomer } from '@/api/customers'
 import { formatMoney, formatDate } from '@/lib/format'
 import type { Sale } from '@/api/sales'
 
@@ -65,9 +66,11 @@ const defaultValues: FormValues = {
   description: '',
 }
 
-function validate(values: FormValues): Partial<Record<FieldName, string>> {
+function validate(values: FormValues, skipCustomerFields = false): Partial<Record<FieldName, string>> {
   const errors: Partial<Record<FieldName, string>> = {}
+  const customerFields: FieldName[] = ['ledger_name', 'ledger_page', 'ledger_row', 'name']
   for (const f of REQUIRED) {
+    if (skipCustomerFields && customerFields.includes(f)) continue
     if (!values[f].trim()) errors[f] = 'Zorunlu alan'
   }
   if (values.total_amount && isNaN(Number(values.total_amount)))
@@ -130,11 +133,33 @@ function buildEqualRows(total: number, down: number, count: number, firstDueDate
 
 export default function DefterAktarim() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const prefillId = searchParams.get('customer_id') ? Number(searchParams.get('customer_id')) : null
+
   const [values, setValues] = useState<FormValues>(defaultValues)
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({})
   const [saved, setSaved] = useState<Sale | null>(null)
   const [installmentRows, setInstallmentRows] = useState<InstallmentRow[]>([])
   const refs = useRef<Partial<Record<FieldName, HTMLInputElement | HTMLTextAreaElement | null>>>({})
+
+  const { data: prefillCustomer } = useQuery({
+    queryKey: ['customer', prefillId],
+    queryFn: () => getCustomer(prefillId!),
+    enabled: prefillId !== null,
+  })
+
+  useEffect(() => {
+    if (!prefillCustomer) return
+    setValues((v) => ({
+      ...v,
+      name: prefillCustomer.name,
+      phone: prefillCustomer.phone ?? '',
+      tc_kimlik: prefillCustomer.tc_kimlik ?? '',
+      ledger_name: prefillCustomer.ledger_name ?? v.ledger_name,
+      ledger_page: prefillCustomer.ledger_page ? String(prefillCustomer.ledger_page) : v.ledger_page,
+      ledger_row: prefillCustomer.ledger_row ? String(prefillCustomer.ledger_row) : v.ledger_row,
+    }))
+  }, [prefillCustomer])
 
   // Auto-compute installment rows when the 4 key fields change
   useEffect(() => {
@@ -217,7 +242,7 @@ export default function DefterAktarim() {
   }
 
   function submit() {
-    const errs = validate(values)
+    const errs = validate(values, prefillId !== null)
     if (Object.keys(errs).length > 0) {
       setErrors(errs)
       const firstErr = FIELDS.find((f) => errs[f])
@@ -231,10 +256,18 @@ export default function DefterAktarim() {
       .map((r) => ({ sequence: r.sequence, paid_at: r.paid_at }))
 
     mutation.mutate({
-      ledger_name: values.ledger_name.trim(),
-      ledger_page: Number(values.ledger_page),
-      ledger_row: Number(values.ledger_row),
-      name: values.name.trim(),
+      ...(prefillId ? { customer_id: prefillId } : {
+        ledger_name: values.ledger_name.trim(),
+        ledger_page: Number(values.ledger_page),
+        ledger_row: Number(values.ledger_row),
+        name: values.name.trim(),
+      }),
+      // Always pass ledger coords so backend can update existing customer record
+      ...(!prefillId ? {} : {
+        ledger_name: values.ledger_name.trim() || undefined,
+        ledger_page: values.ledger_page ? Number(values.ledger_page) : undefined,
+        ledger_row: values.ledger_row ? Number(values.ledger_row) : undefined,
+      }),
       phone: values.phone.trim() || undefined,
       tc_kimlik: values.tc_kimlik.trim() || undefined,
       description: values.description.trim() || undefined,
@@ -270,6 +303,21 @@ export default function DefterAktarim() {
 
       {/* Centered content */}
       <div className="flex-1 overflow-auto flex flex-col items-center py-8 px-4">
+
+        {/* Prefill banner */}
+        {prefillCustomer && !saved && (
+          <div className="w-full max-w-[680px] mb-4 rounded-lg border border-sky-200 bg-sky-50 p-4 flex items-start gap-3">
+            <UserCheck size={16} className="text-sky-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-sky-800">
+                Mevcut müşteri: {prefillCustomer.name}
+              </p>
+              <p className="text-xs text-sky-700 mt-0.5">
+                Bu kayıt mevcut müşteriye yeni bir senet/taksit planı olarak eklenecek.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Success banner */}
         {saved && (

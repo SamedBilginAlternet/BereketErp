@@ -7,10 +7,11 @@ export interface PaidInstallmentPayload {
 }
 
 export interface LedgerEntryPayload {
-  ledger_name: string
-  ledger_page: number
-  ledger_row: number
-  name: string
+  customer_id?: number
+  ledger_name?: string
+  ledger_page?: number
+  ledger_row?: number
+  name?: string
   phone?: string
   tc_kimlik?: string
   description?: string

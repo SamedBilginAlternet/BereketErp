@@ -20,6 +20,7 @@ Route::prefix('v1')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
 
+        Route::get('customers/pending-detail', [CustomerController::class, 'pendingDetail']);
         Route::apiResource('customers', CustomerController::class);
 
         Route::post('sales/preview', [SaleController::class, 'preview']);
@@ -39,5 +40,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('imports/template', [ImportController::class, 'template']);
         Route::post('imports/ledger', [ImportController::class, 'store']);
+        Route::get('imports/basic-template', [ImportController::class, 'basicTemplate']);
+        Route::post('imports/customers', [ImportController::class, 'basicImport']);
     });
 });

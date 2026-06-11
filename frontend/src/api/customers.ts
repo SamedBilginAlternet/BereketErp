@@ -5,6 +5,7 @@ export interface Customer {
   name: string
   phone: string | null
   tc_kimlik: string | null
+  import_source: string | null
   address: string | null
   note: string | null
   ledger_name: string | null
@@ -54,4 +55,9 @@ export async function updateCustomer(id: number, payload: CustomerPayload): Prom
 
 export async function deleteCustomer(id: number): Promise<void> {
   await api.delete(`/customers/${id}`)
+}
+
+export async function getPendingDetailCustomers(): Promise<Customer[]> {
+  const { data } = await api.get<{ data: Customer[] }>('/customers/pending-detail')
+  return data.data
 }

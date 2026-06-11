@@ -17,6 +17,7 @@ class Customer extends Model
         'name',
         'phone',
         'tc_kimlik',
+        'import_source',
         'address',
         'note',
         'ledger_name',

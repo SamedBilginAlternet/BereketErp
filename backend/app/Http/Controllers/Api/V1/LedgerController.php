@@ -24,10 +24,11 @@ class LedgerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $v = $request->validate([
-            'ledger_name'                    => ['required', 'string', 'max:50'],
-            'ledger_page'                    => ['required', 'integer', 'min:1'],
-            'ledger_row'                     => ['required', 'integer', 'min:1'],
-            'name'                           => ['required', 'string', 'max:255'],
+            'customer_id'                    => ['nullable', 'integer', 'exists:customers,id'],
+            'ledger_name'                    => ['required_without:customer_id', 'nullable', 'string', 'max:50'],
+            'ledger_page'                    => ['required_without:customer_id', 'nullable', 'integer', 'min:1'],
+            'ledger_row'                     => ['required_without:customer_id', 'nullable', 'integer', 'min:1'],
+            'name'                           => ['required_without:customer_id', 'nullable', 'string', 'max:255'],
             'phone'                          => ['nullable', 'string', 'max:20'],
             'tc_kimlik'                      => ['nullable', 'digits:11'],
             'description'                    => ['nullable', 'string', 'max:500'],
@@ -45,14 +46,27 @@ class LedgerController extends Controller
 
         try {
             $sale = DB::transaction(function () use ($v, $request) {
-                $customer = Customer::create([
-                    'name'        => $v['name'],
-                    'phone'       => $v['phone'] ?? null,
-                    'tc_kimlik'   => $v['tc_kimlik'] ?? null,
-                    'ledger_name' => $v['ledger_name'],
-                    'ledger_page' => $v['ledger_page'],
-                    'ledger_row'  => $v['ledger_row'],
-                ]);
+                if (!empty($v['customer_id'])) {
+                    $customer = Customer::findOrFail($v['customer_id']);
+                    // Update ledger position if supplied (covers case where basic import didn't set it)
+                    $ledgerUpdate = array_filter([
+                        'ledger_name' => $v['ledger_name'] ?? null,
+                        'ledger_page' => $v['ledger_page'] ?? null,
+                        'ledger_row'  => $v['ledger_row'] ?? null,
+                    ]);
+                    if (!empty($ledgerUpdate)) {
+                        $customer->update($ledgerUpdate);
+                    }
+                } else {
+                    $customer = Customer::create([
+                        'name'        => $v['name'],
+                        'phone'       => $v['phone'] ?? null,
+                        'tc_kimlik'   => $v['tc_kimlik'] ?? null,
+                        'ledger_name' => $v['ledger_name'],
+                        'ledger_page' => $v['ledger_page'],
+                        'ledger_row'  => $v['ledger_row'],
+                    ]);
+                }
 
                 $sale = $this->installmentService->createSale(
                     customer: $customer,

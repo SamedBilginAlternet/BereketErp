@@ -50,6 +50,13 @@ class CustomerController extends Controller
         return new CustomerResource($customer->fresh());
     }
 
+    public function pendingDetail(): AnonymousResourceCollection
+    {
+        return CustomerResource::collection(
+            Customer::doesntHave('sales')->orderBy('name')->get()
+        );
+    }
+
     public function destroy(Customer $customer): JsonResponse
     {
         $customer->delete();

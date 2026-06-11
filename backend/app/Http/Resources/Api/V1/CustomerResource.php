@@ -21,6 +21,7 @@ class CustomerResource extends JsonResource
             'tc_kimlik' => $this->tc_kimlik,
             'address' => $this->address,
             'note' => $this->note,
+            'import_source' => $this->import_source,
             'ledger_name' => $this->ledger_name,
             'ledger_page' => $this->ledger_page,
             'ledger_row' => $this->ledger_row,

@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ImportController extends Controller
 {
-    private const HEADERS = [
+    private const FULL_HEADERS = [
         'defter',
         'sayfa',
         'satir',
@@ -29,6 +29,15 @@ class ImportController extends Controller
         'ilk_vade',
     ];
 
+    private const BASIC_HEADERS = [
+        'defter',
+        'sayfa',
+        'satir',
+        'musteri_adi',
+        'telefon',
+        'tc_kimlik',
+    ];
+
     public function __construct(private InstallmentService $installmentService) {}
 
     public function template(): StreamedResponse
@@ -40,13 +49,122 @@ class ImportController extends Controller
 
         return response()->streamDownload(function () {
             $out = fopen('php://output', 'w');
-            // UTF-8 BOM so Excel opens correctly
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, self::HEADERS);
-            // Example row
+            fputcsv($out, self::FULL_HEADERS);
             fputcsv($out, ['A', '1', '1', 'Ahmet Yılmaz', '05301234567', 'Telefon', '5000.00', '500.00', '10', date('Y-m-d'), date('Y-m-d', strtotime('+1 month'))]);
             fclose($out);
         }, 'bereket_sablon.csv', $headers);
+    }
+
+    public function basicTemplate(): StreamedResponse
+    {
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="bereket_musteri_listesi.csv"',
+        ];
+
+        return response()->streamDownload(function () {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, self::BASIC_HEADERS);
+            fputcsv($out, ['A', '1', '1', 'Ahmet Yılmaz', '05301234567', '12345678901']);
+            fputcsv($out, ['A', '1', '2', 'Fatma Demir', '05441234567', '']);
+            fclose($out);
+        }, 'bereket_musteri_listesi.csv', $headers);
+    }
+
+    public function basicImport(Request $request): JsonResponse
+    {
+        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
+
+        $path   = $request->file('file')->getRealPath();
+        $handle = fopen($path, 'r');
+
+        fgetcsv($handle); // skip header
+
+        $rowNum    = 1;
+        $imported  = 0;
+        $skipped   = 0;
+        $rowErrors = [];
+
+        while (($cols = fgetcsv($handle)) !== false) {
+            $rowNum++;
+            if (array_filter($cols, fn ($v) => trim($v) !== '') === []) {
+                continue;
+            }
+
+            $row = array_combine(self::BASIC_HEADERS, array_pad($cols, count(self::BASIC_HEADERS), ''));
+
+            $v = Validator::make($row, [
+                'defter'      => ['required', 'string', 'max:50'],
+                'sayfa'       => ['required', 'integer', 'min:1'],
+                'satir'       => ['required', 'integer', 'min:1'],
+                'musteri_adi' => ['required', 'string', 'max:255'],
+                'telefon'     => ['nullable', 'string', 'max:20'],
+                'tc_kimlik'   => ['nullable', 'digits:11'],
+            ]);
+
+            if ($v->fails()) {
+                foreach ($v->errors()->messages() as $field => $msgs) {
+                    $rowErrors[] = ['row' => $rowNum, 'field' => $field, 'message' => $msgs[0]];
+                }
+                continue;
+            }
+
+            $tc = trim($row['tc_kimlik']) ?: null;
+
+            // TC duplicate check
+            if ($tc !== null && Customer::where('tc_kimlik', $tc)->exists()) {
+                $rowErrors[] = [
+                    'row'     => $rowNum,
+                    'field'   => 'tc_kimlik',
+                    'message' => "Bu TC Kimlik numarası ({$tc}) zaten kayıtlı.",
+                ];
+                $skipped++;
+                continue;
+            }
+
+            // Ledger coordinate duplicate check
+            $duplicate = Customer::where('ledger_name', $row['defter'])
+                ->where('ledger_page', (int) $row['sayfa'])
+                ->where('ledger_row', (int) $row['satir'])
+                ->exists();
+
+            if ($duplicate) {
+                $rowErrors[] = [
+                    'row'     => $rowNum,
+                    'field'   => 'defter/sayfa/satir',
+                    'message' => "Bu defter konumu ({$row['defter']}/{$row['sayfa']}/{$row['satir']}) zaten mevcut.",
+                ];
+                $skipped++;
+                continue;
+            }
+
+            try {
+                Customer::create([
+                    'name'          => trim($row['musteri_adi']),
+                    'phone'         => trim($row['telefon']) ?: null,
+                    'tc_kimlik'     => $tc,
+                    'import_source' => 'csv',
+                    'ledger_name'   => trim($row['defter']),
+                    'ledger_page'   => (int) $row['sayfa'],
+                    'ledger_row'    => (int) $row['satir'],
+                ]);
+                $imported++;
+            } catch (\Throwable $e) {
+                $rowErrors[] = ['row' => $rowNum, 'field' => '-', 'message' => 'Kayıt oluşturulamadı: ' . $e->getMessage()];
+            }
+        }
+
+        fclose($handle);
+
+        return response()->json([
+            'data' => [
+                'imported' => $imported,
+                'skipped'  => $skipped,
+                'errors'   => $rowErrors,
+            ],
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -56,7 +174,6 @@ class ImportController extends Controller
         $path = $request->file('file')->getRealPath();
         $handle = fopen($path, 'r');
 
-        // Skip header row
         fgetcsv($handle);
 
         $rowNum    = 1;
@@ -67,10 +184,10 @@ class ImportController extends Controller
         while (($cols = fgetcsv($handle)) !== false) {
             $rowNum++;
             if (array_filter($cols, fn($v) => trim($v) !== '') === []) {
-                continue; // blank row
+                continue;
             }
 
-            $row = array_combine(self::HEADERS, array_pad($cols, count(self::HEADERS), ''));
+            $row = array_combine(self::FULL_HEADERS, array_pad($cols, count(self::FULL_HEADERS), ''));
 
             $v = Validator::make($row, [
                 'defter'        => ['required', 'string', 'max:50'],
@@ -93,7 +210,6 @@ class ImportController extends Controller
                 continue;
             }
 
-            // Duplicate check: same ledger coords
             $duplicate = Customer::where('ledger_name', $row['defter'])
                 ->where('ledger_page', (int) $row['sayfa'])
                 ->where('ledger_row', (int) $row['satir'])

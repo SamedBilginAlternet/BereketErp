@@ -48,14 +48,19 @@ class DashboardController extends Controller
         // Due tomorrow: pending/partial whose due_date = tomorrow
         $dueTomorrow = $this->bucket($tomorrow, $tomorrow);
 
+        $sum = fn ($col) => number_format((float) $col->sum('remaining'), 2, '.', '');
+
         return response()->json([
             'data' => [
-                'due_today_count' => $dueToday->count(),
-                'overdue_count' => $overdue->count(),
+                'due_today_count'    => $dueToday->count(),
+                'due_today_total'    => $sum($dueToday),
+                'overdue_count'      => $overdue->count(),
+                'overdue_total'      => $sum($overdue),
                 'due_tomorrow_count' => $dueTomorrow->count(),
-                'due_today' => $dueToday,
-                'overdue' => $overdue,
-                'due_tomorrow' => $dueTomorrow,
+                'due_tomorrow_total' => $sum($dueTomorrow),
+                'due_today'          => $dueToday,
+                'overdue'            => $overdue,
+                'due_tomorrow'       => $dueTomorrow,
             ],
         ]);
     }

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { getCustomers } from '@/api/customers'
+import { getCustomers, getCustomer } from '@/api/customers'
 import { previewInstallments, createSale } from '@/api/sales'
 import { formatMoney, formatDate } from '@/lib/format'
 
@@ -29,14 +29,29 @@ const labelClass = 'block text-xs font-medium text-muted-foreground mb-1'
 
 export default function YeniSatis() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const prefillCustomerId = searchParams.get('customer_id') ? Number(searchParams.get('customer_id')) : null
+
   const [customerSearch, setCustomerSearch] = useState('')
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(prefillCustomerId)
   const [selectedCustomerName, setSelectedCustomerName] = useState('')
   const [customerError, setCustomerError] = useState('')
   const [installmentRows, setInstallmentRows] = useState<InstallmentRow[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const { data: prefillCustomer } = useQuery({
+    queryKey: ['customer', prefillCustomerId],
+    queryFn: () => getCustomer(prefillCustomerId!),
+    enabled: prefillCustomerId !== null,
+  })
+
+  useEffect(() => {
+    if (prefillCustomer && !selectedCustomerName) {
+      setSelectedCustomerName(prefillCustomer.name)
+    }
+  }, [prefillCustomer, selectedCustomerName])
 
   const { data: customers } = useQuery({
     queryKey: ['customers-search', customerSearch],

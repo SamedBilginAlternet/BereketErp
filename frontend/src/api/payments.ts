@@ -37,8 +37,11 @@ export interface DashboardBucketItem {
 
 export interface DailyDashboard {
   due_today_count: number
+  due_today_total: string
   overdue_count: number
+  overdue_total: string
   due_tomorrow_count: number
+  due_tomorrow_total: string
   due_today: DashboardBucketItem[]
   overdue: DashboardBucketItem[]
   due_tomorrow: DashboardBucketItem[]

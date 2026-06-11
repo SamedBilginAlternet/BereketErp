@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Phone, BookOpen, Wallet, Calendar, CreditCard, IdCard } from 'lucide-react'
+import { ArrowLeft, Phone, BookOpen, Wallet, Calendar, CreditCard, IdCard, PlusCircle, Printer } from 'lucide-react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { getCustomer } from '@/api/customers'
 import { getCustomerBalance, recordPayment } from '@/api/payments'
@@ -158,6 +158,55 @@ function buildInstallmentColumns(onPay: (i: Installment) => void): ColumnDef<Ins
   ]
 }
 
+function printSale(customerName: string, sale: import('@/api/sales').Sale) {
+  const rows = sale.installments
+    .slice()
+    .sort((a, b) => a.sequence - b.sequence)
+    .map(
+      (inst) =>
+        `<tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">${inst.sequence}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb">${inst.due_date}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-family:monospace">${Number(inst.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">${inst.status === 'paid' ? '✓' : ''}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb"></td>
+        </tr>`,
+    )
+    .join('')
+
+  const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">
+  <title>Senet — ${customerName}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:13px;color:#111;margin:32px}
+    h2{margin:0 0 4px}
+    .meta{color:#6b7280;font-size:12px;margin-bottom:20px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f9fafb;padding:8px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb}
+    th:last-child,td:last-child{text-align:center}
+    @media print{body{margin:12px}}
+  </style></head><body>
+  <h2>${customerName}</h2>
+  <p class="meta">${sale.description ?? ''} &nbsp;·&nbsp; Toplam: ${Number(sale.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ &nbsp;·&nbsp; Peşinat: ${Number(sale.down_payment).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ &nbsp;·&nbsp; Satış: ${sale.sale_date}</p>
+  <table>
+    <thead><tr>
+      <th style="text-align:center">#</th>
+      <th>Vade Tarihi</th>
+      <th style="text-align:right">Tutar</th>
+      <th style="text-align:center">Ödendi</th>
+      <th>İmza</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <script>window.onload=()=>{window.print();window.close()}<\/script>
+  </body></html>`
+
+  const win = window.open('', '_blank', 'width=700,height=800')
+  if (win) {
+    win.document.write(html)
+    win.document.close()
+  }
+}
+
 export default function MusteriDetay() {
   const { id } = useParams<{ id: string }>()
   const customerId = Number(id)
@@ -189,9 +238,17 @@ export default function MusteriDetay() {
     <div className="h-full flex flex-col">
       {/* Page header */}
       <div className="px-8 pt-6 pb-5 border-b border-border">
-        <Link to="/musteriler" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3">
-          <ArrowLeft size={13} />Müşteriler
-        </Link>
+        <div className="flex items-center justify-between mb-3">
+          <Link to="/musteriler" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <ArrowLeft size={13} />Müşteriler
+          </Link>
+          <Link
+            to={`/satislar/yeni?customer_id=${customerId}`}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+          >
+            <PlusCircle size={13} />Yeni Senet Ekle
+          </Link>
+        </div>
         <div className="flex items-start justify-between gap-6">
           <div>
             <h1 className="text-xl font-semibold text-foreground">{customer.name}</h1>
@@ -256,7 +313,16 @@ export default function MusteriDetay() {
                     <span className="font-medium text-foreground">{sale.description ?? `Satış #${sale.id}`}</span>
                     <span className="text-xs text-muted-foreground">{formatDate(sale.sale_date)}</span>
                   </div>
-                  <span className="text-sm tabular-nums font-semibold text-foreground">{formatMoney(sale.total_amount)}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm tabular-nums font-semibold text-foreground">{formatMoney(sale.total_amount)}</span>
+                    <button
+                      type="button"
+                      onClick={() => printSale(customer.name, sale)}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Printer size={13} />Yazdır
+                    </button>
+                  </div>
                 </div>
                 <DataTable
                   data={sale.installments}

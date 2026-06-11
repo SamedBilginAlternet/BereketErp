@@ -6,6 +6,7 @@ import {
   BookOpen,
   Upload,
   PhoneCall,
+  BarChart3,
   LogOut,
 } from 'lucide-react'
 import { logout } from '@/api/auth'
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/defter', label: 'Defter Aktarımı', icon: BookOpen },
   { to: '/aktarim', label: 'CSV Aktarım', icon: Upload },
   { to: '/tahsilat', label: 'Tahsilat', icon: PhoneCall },
+  { to: '/raporlar', label: 'Raporlar', icon: BarChart3 },
 ]
 
 export default function AppShell() {

@@ -70,6 +70,12 @@ export default function Dashboard() {
     tomorrow: data?.due_tomorrow_count ?? 0,
   }
 
+  const totals: Record<Bucket, string> = {
+    overdue:  data?.overdue_total ?? '0.00',
+    today:    data?.due_today_total ?? '0.00',
+    tomorrow: data?.due_tomorrow_total ?? '0.00',
+  }
+
   const items: Record<Bucket, DashboardBucketItem[]> = {
     overdue:  data?.overdue ?? [],
     today:    data?.due_today ?? [],
@@ -88,6 +94,7 @@ export default function Dashboard() {
       <div className="border-b border-border px-8 flex gap-1">
         {TABS.map(({ key, label, dot }) => {
           const count = counts[key]
+          const total = totals[key]
           const isActive = active === key
           return (
             <button
@@ -106,6 +113,11 @@ export default function Dashboard() {
               }`}>
                 {count}
               </span>
+              {count > 0 && (
+                <span className="tabular-nums text-xs text-muted-foreground hidden sm:inline">
+                  {formatMoney(total)}
+                </span>
+              )}
             </button>
           )
         })}

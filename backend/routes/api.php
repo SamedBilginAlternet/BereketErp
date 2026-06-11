@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\LedgerController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\ReportsController;
 use App\Http\Controllers\Api\V1\SaleController;
 use App\Http\Controllers\Api\V1\TimelineController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,9 @@ Route::prefix('v1')->group(function () {
         Route::get('customers/{customer}/balance', [PaymentController::class, 'balance']);
 
         Route::get('dashboard/daily', [DashboardController::class, 'daily']);
+
+        Route::get('reports/summary', [ReportsController::class, 'summary']);
+        Route::get('reports/aging', [ReportsController::class, 'aging']);
 
         Route::post('ledger/entry', [LedgerController::class, 'store']);
 

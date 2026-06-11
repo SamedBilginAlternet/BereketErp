@@ -18,6 +18,7 @@ class StoreCustomerRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
+            'tc_kimlik' => ['nullable', 'digits:11'],
             'address' => ['nullable', 'string', 'max:500'],
             'note' => ['nullable', 'string', 'max:1000'],
             'ledger_name' => ['nullable', 'string', 'max:100'],

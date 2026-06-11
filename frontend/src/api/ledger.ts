@@ -7,6 +7,7 @@ export interface LedgerEntryPayload {
   ledger_row: number
   name: string
   phone?: string
+  tc_kimlik?: string
   description?: string
   total_amount: number
   down_payment: number

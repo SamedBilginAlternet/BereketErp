@@ -24,6 +24,7 @@ class LedgerController extends Controller
             'ledger_row'        => ['required', 'integer', 'min:1'],
             'name'              => ['required', 'string', 'max:255'],
             'phone'             => ['nullable', 'string', 'max:20'],
+            'tc_kimlik'         => ['nullable', 'digits:11'],
             'description'       => ['nullable', 'string', 'max:500'],
             'total_amount'      => ['required', 'numeric', 'min:0.01'],
             'down_payment'      => ['required', 'numeric', 'min:0'],
@@ -36,6 +37,7 @@ class LedgerController extends Controller
             $customer = Customer::create([
                 'name'        => $v['name'],
                 'phone'       => $v['phone'] ?? null,
+                'tc_kimlik'   => $v['tc_kimlik'] ?? null,
                 'ledger_name' => $v['ledger_name'],
                 'ledger_page' => $v['ledger_page'],
                 'ledger_row'  => $v['ledger_row'],

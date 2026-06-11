@@ -18,6 +18,7 @@ import { useDebounce } from '@/lib/useDebounce'
 const schema = z.object({
   name: z.string().min(1, 'Müşteri adı zorunludur.'),
   phone: z.string().optional(),
+  tc_kimlik: z.string().refine((v) => !v || /^\d{11}$/.test(v), { message: 'TC Kimlik 11 rakam olmalıdır.' }).optional(),
   address: z.string().optional(),
   note: z.string().optional(),
   ledger_name: z.string().optional(),
@@ -45,6 +46,7 @@ function CustomerForm({
       ? {
           name: initial.name,
           phone: initial.phone ?? '',
+          tc_kimlik: initial.tc_kimlik ?? '',
           address: initial.address ?? '',
           note: initial.note ?? '',
           ledger_name: initial.ledger_name ?? '',
@@ -67,6 +69,7 @@ function CustomerForm({
     const payload: CustomerPayload = {
       name: data.name,
       phone: data.phone || undefined,
+      tc_kimlik: data.tc_kimlik || undefined,
       address: data.address || undefined,
       note: data.note || undefined,
       ledger_name: data.ledger_name || undefined,
@@ -86,9 +89,14 @@ function CustomerForm({
           <Field label="Ad Soyad *" error={errors.name?.message}>
             <input autoFocus {...register('name')} className={inputClass} />
           </Field>
-          <Field label="Telefon" error={errors.phone?.message}>
-            <input {...register('phone')} className={inputClass} />
-          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Telefon" error={errors.phone?.message}>
+              <input {...register('phone')} className={inputClass} />
+            </Field>
+            <Field label="TC Kimlik No" error={errors.tc_kimlik?.message}>
+              <input {...register('tc_kimlik')} maxLength={11} placeholder="11 rakam" className={inputClass} />
+            </Field>
+          </div>
           <Field label="Adres" error={errors.address?.message}>
             <input {...register('address')} className={inputClass} />
           </Field>

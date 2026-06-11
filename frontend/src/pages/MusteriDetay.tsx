@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Phone, BookOpen, Wallet, Calendar, CreditCard } from 'lucide-react'
+import { ArrowLeft, Phone, BookOpen, Wallet, Calendar, CreditCard, IdCard } from 'lucide-react'
 import { type ColumnDef } from '@tanstack/react-table'
 import { getCustomer } from '@/api/customers'
 import { getCustomerBalance, recordPayment } from '@/api/payments'
@@ -199,6 +199,11 @@ export default function MusteriDetay() {
               {customer.phone && (
                 <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Phone size={13} />{customer.phone}
+                </span>
+              )}
+              {customer.tc_kimlik && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <IdCard size={13} />{customer.tc_kimlik}
                 </span>
               )}
               {customer.ledger_name && (

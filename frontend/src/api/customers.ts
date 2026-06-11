@@ -4,6 +4,7 @@ export interface Customer {
   id: number
   name: string
   phone: string | null
+  tc_kimlik: string | null
   address: string | null
   note: string | null
   ledger_name: string | null
@@ -15,6 +16,7 @@ export interface Customer {
 export interface CustomerPayload {
   name: string
   phone?: string
+  tc_kimlik?: string
   address?: string
   note?: string
   ledger_name?: string

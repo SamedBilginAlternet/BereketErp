@@ -14,6 +14,7 @@ type FieldName =
   | 'ledger_row'
   | 'name'
   | 'phone'
+  | 'tc_kimlik'
   | 'total_amount'
   | 'down_payment'
   | 'installment_count'
@@ -27,6 +28,7 @@ const FIELDS: FieldName[] = [
   'ledger_row',
   'name',
   'phone',
+  'tc_kimlik',
   'total_amount',
   'down_payment',
   'installment_count',
@@ -54,6 +56,7 @@ const defaultValues: FormValues = {
   ledger_row: '',
   name: '',
   phone: '',
+  tc_kimlik: '',
   total_amount: '',
   down_payment: '0',
   installment_count: '',
@@ -79,6 +82,8 @@ function validate(values: FormValues): Partial<Record<FieldName, string>> {
     errors.down_payment = 'Peşinat toplam tutardan büyük olamaz'
   if (values.installment_count && isNaN(Number(values.installment_count)))
     errors.installment_count = 'Geçersiz sayı'
+  if (values.tc_kimlik && !/^\d{11}$/.test(values.tc_kimlik))
+    errors.tc_kimlik = '11 rakam olmalıdır'
   return errors
 }
 
@@ -153,6 +158,7 @@ export default function DefterAktarim() {
       ledger_row: Number(values.ledger_row),
       name: values.name.trim(),
       phone: values.phone.trim() || undefined,
+      tc_kimlik: values.tc_kimlik.trim() || undefined,
       description: values.description.trim() || undefined,
       total_amount: Number(values.total_amount),
       down_payment: Number(values.down_payment || '0'),
@@ -243,23 +249,23 @@ export default function DefterAktarim() {
 
             <SectionLabel>Müşteri Bilgileri</SectionLabel>
 
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                Müşteri Adı <span className="text-primary">*</span>
+              </label>
+              <input
+                ref={(el) => { refs.current.name = el }}
+                type="text"
+                value={values.name}
+                onChange={(e) => set('name', e.target.value)}
+                onKeyDown={(e) => handleKey(e, 'name')}
+                placeholder="Ad Soyad"
+                className={lineInput('name')}
+              />
+              {errors.name && <p className="text-[11px] text-red-500 mt-0.5">{errors.name}</p>}
+            </div>
             <div className="grid grid-cols-2 gap-6">
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                  Müşteri Adı <span className="text-primary">*</span>
-                </label>
-                <input
-                  ref={(el) => { refs.current.name = el }}
-                  type="text"
-                  value={values.name}
-                  onChange={(e) => set('name', e.target.value)}
-                  onKeyDown={(e) => handleKey(e, 'name')}
-                  placeholder="Ad Soyad"
-                  className={lineInput('name')}
-                />
-                {errors.name && <p className="text-[11px] text-red-500 mt-0.5">{errors.name}</p>}
-              </div>
-              <div className="col-span-2 sm:col-span-1">
+              <div>
                 <label className="block text-[11px] font-medium text-muted-foreground mb-1">Telefon</label>
                 <input
                   ref={(el) => { refs.current.phone = el }}
@@ -270,6 +276,21 @@ export default function DefterAktarim() {
                   placeholder="05xx xxx xx xx"
                   className={lineInput('phone')}
                 />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-muted-foreground mb-1">TC Kimlik No</label>
+                <input
+                  ref={(el) => { refs.current.tc_kimlik = el }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={11}
+                  value={values.tc_kimlik}
+                  onChange={(e) => set('tc_kimlik', e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(e) => handleKey(e, 'tc_kimlik')}
+                  placeholder="11 rakam"
+                  className={lineInput('tc_kimlik')}
+                />
+                {errors.tc_kimlik && <p className="text-[11px] text-red-500 mt-0.5">{errors.tc_kimlik}</p>}
               </div>
             </div>
 

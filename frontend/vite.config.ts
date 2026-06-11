@@ -13,7 +13,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        // Docker: VITE_API_URL=http://nginx  |  native: http://127.0.0.1:8000
+        target: process.env.VITE_API_URL ?? 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

@@ -39,7 +39,11 @@ services:
     container_name: bereket-scheduler
     restart: unless-stopped
     working_dir: /var/www/html
-    command: php artisan schedule:work
+    # On startup: refresh overdue statuses + generate today's call tasks, then run scheduler loop
+    command: >
+      sh -c "php artisan app:refresh-overdue-installments
+             && php artisan app:generate-call-tasks
+             && php artisan schedule:work"
     volumes:
       - ./backend:/var/www/html
     environment:

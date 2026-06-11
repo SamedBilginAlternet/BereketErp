@@ -13,8 +13,8 @@ class DashboardController extends Controller
 {
     public function daily(): JsonResponse
     {
-        $today = now()->toDateString();
-        $tomorrow = now()->addDay()->toDateString();
+        $today    = now('Europe/Istanbul')->toDateString();
+        $tomorrow = now('Europe/Istanbul')->addDay()->toDateString();
 
         // Due today: pending/partial whose due_date = today (NOT already overdue bucket)
         $dueToday = $this->bucket($today, $today);

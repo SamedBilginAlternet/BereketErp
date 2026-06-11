@@ -7,6 +7,10 @@ RUN apk add --no-cache icu-dev libzip-dev zip unzip git $PHPIZE_DEPS \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# PHP config
+COPY php.ini     /usr/local/etc/php/conf.d/99-bereket.ini
+COPY opcache.ini /usr/local/etc/php/conf.d/10-opcache.ini
+
 RUN addgroup -g 1000 bereket && adduser -G bereket -u 1000 -D bereket
 USER bereket
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\SaleController;
 use Illuminate\Support\Facades\Route;
@@ -22,5 +23,7 @@ Route::prefix('v1')->group(function () {
 
         Route::post('installments/{installment}/payments', [PaymentController::class, 'store']);
         Route::get('customers/{customer}/balance', [PaymentController::class, 'balance']);
+
+        Route::get('dashboard/daily', [DashboardController::class, 'daily']);
     });
 });

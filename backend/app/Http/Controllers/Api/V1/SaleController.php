@@ -26,8 +26,10 @@ class SaleController extends Controller
             $query->where('customer_id', $customerId);
         }
 
+        $perPage = min($request->integer('per_page', 20), 100);
+
         return SaleResource::collection(
-            $query->latest()->paginate(20)
+            $query->latest()->paginate($perPage)
         );
     }
 

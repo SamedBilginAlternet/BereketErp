@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -215,7 +216,11 @@ export default function Musteriler() {
                   key={c.id}
                   className={`border-t border-border ${i % 2 === 1 ? 'bg-muted/30' : ''}`}
                 >
-                  <td className="px-4 py-2.5 font-medium text-foreground">{c.name}</td>
+                  <td className="px-4 py-2.5 font-medium text-foreground">
+                    <Link to={`/musteriler/${c.id}`} className="hover:text-primary hover:underline">
+                      {c.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
                     {c.phone ?? '—'}
                   </td>

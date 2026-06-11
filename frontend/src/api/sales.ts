@@ -67,3 +67,10 @@ export async function getSale(id: number): Promise<Sale> {
   const { data } = await api.get<{ data: Sale }>(`/sales/${id}`)
   return data.data
 }
+
+export async function getCustomerSales(customerId: number): Promise<Sale[]> {
+  const { data } = await api.get<{ data: Sale[] }>('/sales', {
+    params: { customer_id: customerId, per_page: 100 },
+  })
+  return data.data
+}

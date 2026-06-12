@@ -89,16 +89,19 @@ class InstallmentService
                 'first_due_date' => $firstDueDate,
             ]);
 
-            foreach ($schedule as $row) {
-                Installment::create([
-                    'sale_id' => $sale->id,
-                    'sequence' => $row['sequence'],
-                    'amount' => number_format((float) $row['amount_kurus'] / 100, 2, '.', ''),
-                    'paid_amount' => '0.00',
-                    'due_date' => $row['due_date'],
-                    'status' => InstallmentStatus::Pending,
-                ]);
-            }
+            $now  = now()->toDateTimeString();
+            $rows = array_map(fn ($row) => [
+                'sale_id'     => $sale->id,
+                'sequence'    => $row['sequence'],
+                'amount'      => number_format((float) $row['amount_kurus'] / 100, 2, '.', ''),
+                'paid_amount' => '0.00',
+                'due_date'    => $row['due_date'],
+                'status'      => InstallmentStatus::Pending->value,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ], $schedule);
+
+            DB::table('installments')->insert($rows);
 
             return $sale->load('installments');
         });

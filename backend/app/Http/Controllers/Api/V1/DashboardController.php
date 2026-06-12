@@ -16,20 +16,26 @@ class DashboardController extends Controller
         $today    = now('Europe/Istanbul')->toDateString();
         $tomorrow = now('Europe/Istanbul')->addDay()->toDateString();
 
-        // Due today: pending/partial whose due_date = today (NOT already overdue bucket)
-        $dueToday = $this->bucket($today, $today);
+        $pending = [InstallmentStatus::Pending->value, InstallmentStatus::Partial->value];
+        $unpaid  = [...$pending, InstallmentStatus::Overdue->value];
 
-        // Overdue: unpaid with due_date < today
-        $overdue = DB::table('installments')
+        // Single query covering all three buckets; partition in PHP
+        $all = DB::table('installments')
             ->join('sales', 'sales.id', '=', 'installments.sale_id')
             ->join('customers', 'customers.id', '=', 'sales.customer_id')
-            ->whereIn('installments.status', [
-                InstallmentStatus::Pending->value,
-                InstallmentStatus::Partial->value,
-                InstallmentStatus::Overdue->value,
-            ])
-            ->where('installments.due_date', '<', $today)
             ->whereNull('sales.deleted_at')
+            ->where(function ($q) use ($today, $tomorrow, $pending, $unpaid) {
+                $q->where(function ($inner) use ($today, $unpaid) {
+                    $inner->where('installments.due_date', '<', $today)
+                          ->whereIn('installments.status', $unpaid);
+                })->orWhere(function ($inner) use ($today, $pending) {
+                    $inner->where('installments.due_date', $today)
+                          ->whereIn('installments.status', $pending);
+                })->orWhere(function ($inner) use ($tomorrow, $pending) {
+                    $inner->where('installments.due_date', $tomorrow)
+                          ->whereIn('installments.status', $pending);
+                });
+            })
             ->select(
                 'customers.id as customer_id',
                 'customers.name as customer_name',
@@ -43,10 +49,12 @@ class DashboardController extends Controller
                 'installments.status',
             )
             ->orderBy('installments.due_date')
+            ->orderBy('customers.name')
             ->get();
 
-        // Due tomorrow: pending/partial whose due_date = tomorrow
-        $dueTomorrow = $this->bucket($tomorrow, $tomorrow);
+        $dueToday    = $all->filter(fn ($r) => $r->due_date === $today);
+        $overdue     = $all->filter(fn ($r) => $r->due_date < $today);
+        $dueTomorrow = $all->filter(fn ($r) => $r->due_date === $tomorrow);
 
         $sum = fn ($col) => number_format((float) $col->sum('remaining'), 2, '.', '');
 
@@ -58,37 +66,10 @@ class DashboardController extends Controller
                 'overdue_total'      => $sum($overdue),
                 'due_tomorrow_count' => $dueTomorrow->count(),
                 'due_tomorrow_total' => $sum($dueTomorrow),
-                'due_today'          => $dueToday,
-                'overdue'            => $overdue,
-                'due_tomorrow'       => $dueTomorrow,
+                'due_today'          => $dueToday->values(),
+                'overdue'            => $overdue->values(),
+                'due_tomorrow'       => $dueTomorrow->values(),
             ],
         ]);
-    }
-
-    private function bucket(string $from, string $to): \Illuminate\Support\Collection
-    {
-        return DB::table('installments')
-            ->join('sales', 'sales.id', '=', 'installments.sale_id')
-            ->join('customers', 'customers.id', '=', 'sales.customer_id')
-            ->whereIn('installments.status', [
-                InstallmentStatus::Pending->value,
-                InstallmentStatus::Partial->value,
-            ])
-            ->whereBetween('installments.due_date', [$from, $to])
-            ->whereNull('sales.deleted_at')
-            ->select(
-                'customers.id as customer_id',
-                'customers.name as customer_name',
-                'customers.phone',
-                'installments.id as installment_id',
-                'installments.sequence',
-                'installments.amount',
-                'installments.paid_amount',
-                DB::raw('installments.amount - installments.paid_amount as remaining'),
-                'installments.due_date',
-                'installments.status',
-            )
-            ->orderBy('customers.name')
-            ->get();
     }
 }

@@ -81,15 +81,12 @@ class LedgerController extends Controller
                 );
 
                 if (!empty($v['paid_installments'])) {
+                    $bySeq = $sale->installments->keyBy('sequence');
                     foreach ($v['paid_installments'] as $paidItem) {
-                        $installment = Installment::where('sale_id', $sale->id)
-                            ->where('sequence', $paidItem['sequence'])
-                            ->first();
-
+                        $installment = $bySeq->get($paidItem['sequence']);
                         if ($installment === null) {
                             continue;
                         }
-
                         $this->paymentService->recordPayment(
                             installment: $installment,
                             user: $request->user(),

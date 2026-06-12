@@ -79,21 +79,35 @@ class ImportController extends Controller
 
         $path   = $request->file('file')->getRealPath();
         $handle = fopen($path, 'r');
-
         fgetcsv($handle); // skip header
 
-        $rowNum    = 1;
-        $imported  = 0;
-        $skipped   = 0;
+        // First pass: collect all rows
+        $allRows = [];
+        while (($cols = fgetcsv($handle)) !== false) {
+            if (array_filter($cols, fn ($v) => trim($v) !== '') !== []) {
+                $allRows[] = array_combine(self::BASIC_HEADERS, array_pad($cols, count(self::BASIC_HEADERS), ''));
+            }
+        }
+        fclose($handle);
+
+        // Bulk pre-load existing TCs and ledger coords (2 queries total)
+        $allTcs = array_filter(array_map(fn ($r) => trim($r['tc_kimlik']) ?: null, $allRows));
+        $existingTcs = $allTcs
+            ? Customer::whereIn('tc_kimlik', $allTcs)->pluck('tc_kimlik')->flip()->all()
+            : [];
+
+        $existingCoords = Customer::whereNotNull('ledger_name')
+            ->get(['ledger_name', 'ledger_page', 'ledger_row'])
+            ->mapWithKeys(fn ($c) => ["{$c->ledger_name}-{$c->ledger_page}-{$c->ledger_row}" => true])
+            ->all();
+
+        $rowNum = 1;
+        $imported = 0;
+        $skipped  = 0;
         $rowErrors = [];
 
-        while (($cols = fgetcsv($handle)) !== false) {
+        foreach ($allRows as $row) {
             $rowNum++;
-            if (array_filter($cols, fn ($v) => trim($v) !== '') === []) {
-                continue;
-            }
-
-            $row = array_combine(self::BASIC_HEADERS, array_pad($cols, count(self::BASIC_HEADERS), ''));
 
             $v = Validator::make($row, [
                 'defter'      => ['required', 'string', 'max:50'],
@@ -111,31 +125,17 @@ class ImportController extends Controller
                 continue;
             }
 
-            $tc = trim($row['tc_kimlik']) ?: null;
+            $tc    = trim($row['tc_kimlik']) ?: null;
+            $coord = "{$row['defter']}-{$row['sayfa']}-{$row['satir']}";
 
-            // TC duplicate check
-            if ($tc !== null && Customer::where('tc_kimlik', $tc)->exists()) {
-                $rowErrors[] = [
-                    'row'     => $rowNum,
-                    'field'   => 'tc_kimlik',
-                    'message' => "Bu TC Kimlik numarası ({$tc}) zaten kayıtlı.",
-                ];
+            if ($tc !== null && isset($existingTcs[$tc])) {
+                $rowErrors[] = ['row' => $rowNum, 'field' => 'tc_kimlik', 'message' => "Bu TC Kimlik numarası ({$tc}) zaten kayıtlı."];
                 $skipped++;
                 continue;
             }
 
-            // Ledger coordinate duplicate check
-            $duplicate = Customer::where('ledger_name', $row['defter'])
-                ->where('ledger_page', (int) $row['sayfa'])
-                ->where('ledger_row', (int) $row['satir'])
-                ->exists();
-
-            if ($duplicate) {
-                $rowErrors[] = [
-                    'row'     => $rowNum,
-                    'field'   => 'defter/sayfa/satir',
-                    'message' => "Bu defter konumu ({$row['defter']}/{$row['sayfa']}/{$row['satir']}) zaten mevcut.",
-                ];
+            if (isset($existingCoords[$coord])) {
+                $rowErrors[] = ['row' => $rowNum, 'field' => 'defter/sayfa/satir', 'message' => "Bu defter konumu ({$row['defter']}/{$row['sayfa']}/{$row['satir']}) zaten mevcut."];
                 $skipped++;
                 continue;
             }
@@ -150,20 +150,19 @@ class ImportController extends Controller
                     'ledger_page'   => (int) $row['sayfa'],
                     'ledger_row'    => (int) $row['satir'],
                 ]);
+                // Keep in-memory sets current so within-file duplicates are also caught
+                if ($tc !== null) {
+                    $existingTcs[$tc] = true;
+                }
+                $existingCoords[$coord] = true;
                 $imported++;
             } catch (\Throwable $e) {
                 $rowErrors[] = ['row' => $rowNum, 'field' => '-', 'message' => 'Kayıt oluşturulamadı: ' . $e->getMessage()];
             }
         }
 
-        fclose($handle);
-
         return response()->json([
-            'data' => [
-                'imported' => $imported,
-                'skipped'  => $skipped,
-                'errors'   => $rowErrors,
-            ],
+            'data' => ['imported' => $imported, 'skipped' => $skipped, 'errors' => $rowErrors],
         ]);
     }
 
@@ -181,13 +180,23 @@ class ImportController extends Controller
         $skipped   = 0;
         $rowErrors = [];
 
+        // First pass: collect all rows
+        $allRows = [];
         while (($cols = fgetcsv($handle)) !== false) {
-            $rowNum++;
-            if (array_filter($cols, fn($v) => trim($v) !== '') === []) {
-                continue;
+            if (array_filter($cols, fn ($v) => trim($v) !== '') !== []) {
+                $allRows[] = array_combine(self::FULL_HEADERS, array_pad($cols, count(self::FULL_HEADERS), ''));
             }
+        }
+        fclose($handle);
 
-            $row = array_combine(self::FULL_HEADERS, array_pad($cols, count(self::FULL_HEADERS), ''));
+        // Bulk pre-load existing ledger coords (1 query)
+        $existingCoords = Customer::whereNotNull('ledger_name')
+            ->get(['ledger_name', 'ledger_page', 'ledger_row'])
+            ->mapWithKeys(fn ($c) => ["{$c->ledger_name}-{$c->ledger_page}-{$c->ledger_row}" => true])
+            ->all();
+
+        foreach ($allRows as $row) {
+            $rowNum++;
 
             $v = Validator::make($row, [
                 'defter'        => ['required', 'string', 'max:50'],
@@ -210,17 +219,9 @@ class ImportController extends Controller
                 continue;
             }
 
-            $duplicate = Customer::where('ledger_name', $row['defter'])
-                ->where('ledger_page', (int) $row['sayfa'])
-                ->where('ledger_row', (int) $row['satir'])
-                ->exists();
-
-            if ($duplicate) {
-                $rowErrors[] = [
-                    'row'     => $rowNum,
-                    'field'   => 'defter/sayfa/satir',
-                    'message' => "Bu defter konumu ({$row['defter']}/{$row['sayfa']}/{$row['satir']}) zaten mevcut.",
-                ];
+            $coord = "{$row['defter']}-{$row['sayfa']}-{$row['satir']}";
+            if (isset($existingCoords[$coord])) {
+                $rowErrors[] = ['row' => $rowNum, 'field' => 'defter/sayfa/satir', 'message' => "Bu defter konumu ({$row['defter']}/{$row['sayfa']}/{$row['satir']}) zaten mevcut."];
                 $skipped++;
                 continue;
             }
@@ -246,13 +247,12 @@ class ImportController extends Controller
                         description: trim($row['aciklama']) ?: null,
                     );
                 });
+                $existingCoords[$coord] = true;
                 $imported++;
             } catch (\Throwable $e) {
                 $rowErrors[] = ['row' => $rowNum, 'field' => '-', 'message' => 'Kayıt oluşturulamadı: ' . $e->getMessage()];
             }
         }
-
-        fclose($handle);
 
         return response()->json([
             'data' => [

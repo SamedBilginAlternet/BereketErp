@@ -16,7 +16,7 @@ class TimelineController extends Controller
         $events = collect();
 
         // Sales
-        $sales = $customer->sales()->with('installments')->latest('sale_date')->get();
+        $sales = $customer->sales()->latest('sale_date')->get();
         foreach ($sales as $sale) {
             $events->push([
                 'type'    => 'sale',

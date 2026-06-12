@@ -10,6 +10,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # PHP config
 COPY php.ini     /usr/local/etc/php/conf.d/99-bereket.ini
 COPY opcache.ini /usr/local/etc/php/conf.d/10-opcache.ini
+COPY www.conf    /usr/local/etc/php-fpm.d/www.conf
 
 RUN addgroup -g 1000 bereket && adduser -G bereket -u 1000 -D bereket
 USER bereket

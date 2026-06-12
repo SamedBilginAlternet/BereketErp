@@ -301,203 +301,260 @@ export default function DefterAktarim() {
         </div>
       </div>
 
-      {/* Centered content */}
-      <div className="flex-1 overflow-auto flex flex-col items-center py-8 px-4">
+      {/* Two-column layout */}
+      <div className="flex-1 overflow-auto flex">
 
-        {/* Prefill banner */}
-        {prefillCustomer && !saved && (
-          <div className="w-full max-w-[680px] mb-4 rounded-lg border border-sky-200 bg-sky-50 p-4 flex items-start gap-3">
-            <UserCheck size={16} className="text-sky-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-sky-800">
-                Mevcut müşteri: {prefillCustomer.name}
+        {/* Left — form */}
+        <div className="flex-1 min-w-0 overflow-auto flex flex-col items-center py-8 px-4">
+
+          {/* Prefill banner */}
+          {prefillCustomer && !saved && (
+            <div className="w-full max-w-[620px] mb-4 rounded-lg border border-sky-200 bg-sky-50 p-4 flex items-start gap-3">
+              <UserCheck size={16} className="text-sky-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-sky-800">
+                  Mevcut müşteri: {prefillCustomer.name}
+                </p>
+                <p className="text-xs text-sky-700 mt-0.5">
+                  Bu kayıt mevcut müşteriye yeni bir senet/taksit planı olarak eklenecek.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Success banner */}
+          {saved && (
+            <div className="w-full max-w-[620px] mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 flex items-start gap-3">
+              <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-emerald-800">
+                  Kaydedildi — {saved.customer?.name ?? 'Müşteri'}
+                </p>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  {saved.installment_count} taksit &middot; {formatMoney(saved.total_amount)} &middot; İlk vade {formatDate(saved.first_due_date)}
+                </p>
+                <button
+                  onClick={() => navigate(`/musteriler/${saved.customer_id}`)}
+                  className="mt-1.5 text-xs text-emerald-700 underline"
+                >
+                  Müşteri kartını aç →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main form card */}
+          <div className="w-full max-w-[620px] bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+
+            {/* Ledger ID strip */}
+            <div className="bg-muted/60 border-b border-border px-6 py-3">
+              <p className="text-[10px] font-semibold tracking-widest text-muted-foreground/70 uppercase mb-2.5">
+                Defter Kimliği
               </p>
-              <p className="text-xs text-sky-700 mt-0.5">
-                Bu kayıt mevcut müşteriye yeni bir senet/taksit planı olarak eklenecek.
-              </p>
+              <div className="grid grid-cols-3 gap-6">
+                {(['ledger_name', 'ledger_page', 'ledger_row'] as const).map((f) => (
+                  <div key={f}>
+                    <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                      {f === 'ledger_name' ? 'Defter' : f === 'ledger_page' ? 'Sayfa' : 'Satır'}
+                      <span className="text-primary ml-0.5">*</span>
+                    </label>
+                    <input
+                      ref={(el) => { refs.current[f] = el }}
+                      type={f === 'ledger_name' ? 'text' : 'number'}
+                      min={1}
+                      value={values[f]}
+                      onChange={(e) => set(f, e.target.value)}
+                      onKeyDown={(e) => handleKey(e, f)}
+                      autoFocus={f === 'ledger_name'}
+                      placeholder={f === 'ledger_name' ? 'A' : '1'}
+                      className={lineInput(f)}
+                    />
+                    {errors[f] && <p className="text-[11px] text-red-500 mt-0.5">{errors[f]}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Form body */}
+            <div className="px-6 py-5 space-y-5">
+
+              <SectionLabel>Müşteri Bilgileri</SectionLabel>
+
+              <div>
+                <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                  Müşteri Adı <span className="text-primary">*</span>
+                </label>
+                <input
+                  ref={(el) => { refs.current.name = el }}
+                  type="text"
+                  value={values.name}
+                  onChange={(e) => set('name', e.target.value)}
+                  onKeyDown={(e) => handleKey(e, 'name')}
+                  placeholder="Ad Soyad"
+                  className={lineInput('name')}
+                />
+                {errors.name && <p className="text-[11px] text-red-500 mt-0.5">{errors.name}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Telefon</label>
+                  <input
+                    ref={(el) => { refs.current.phone = el }}
+                    type="text"
+                    value={values.phone}
+                    onChange={(e) => set('phone', e.target.value)}
+                    onKeyDown={(e) => handleKey(e, 'phone')}
+                    placeholder="05xx xxx xx xx"
+                    className={lineInput('phone')}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">TC Kimlik No</label>
+                  <input
+                    ref={(el) => { refs.current.tc_kimlik = el }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={11}
+                    value={values.tc_kimlik}
+                    onChange={(e) => set('tc_kimlik', e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(e) => handleKey(e, 'tc_kimlik')}
+                    placeholder="11 rakam"
+                    className={lineInput('tc_kimlik')}
+                  />
+                  {errors.tc_kimlik && <p className="text-[11px] text-red-500 mt-0.5">{errors.tc_kimlik}</p>}
+                </div>
+              </div>
+
+              <SectionLabel>Finansal Bilgiler</SectionLabel>
+
+              <div className="grid grid-cols-3 gap-6">
+                {(['total_amount', 'down_payment', 'installment_count'] as const).map((f) => (
+                  <div key={f}>
+                    <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                      {f === 'total_amount' ? 'Toplam Tutar' : f === 'down_payment' ? 'Peşinat' : 'Taksit Sayısı'}
+                      {REQUIRED.has(f) && <span className="text-primary ml-0.5">*</span>}
+                    </label>
+                    <input
+                      ref={(el) => { refs.current[f] = el }}
+                      type="number"
+                      step={f === 'installment_count' ? '1' : '0.01'}
+                      min="0"
+                      value={values[f]}
+                      onChange={(e) => set(f, e.target.value)}
+                      onKeyDown={(e) => handleKey(e, f)}
+                      placeholder={f === 'installment_count' ? '12' : '0,00 ₺'}
+                      className={lineInput(f)}
+                    />
+                    {errors[f] && <p className="text-[11px] text-red-500 mt-0.5">{errors[f]}</p>}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                {(['sale_date', 'first_due_date'] as const).map((f) => (
+                  <div key={f}>
+                    <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                      {f === 'sale_date' ? 'Satış Tarihi' : 'İlk Vade'}
+                      <span className="text-primary ml-0.5">*</span>
+                    </label>
+                    <input
+                      ref={(el) => { refs.current[f] = el }}
+                      type="date"
+                      value={values[f]}
+                      onChange={(e) => set(f, e.target.value)}
+                      onKeyDown={(e) => handleKey(e, f)}
+                      className={lineInput(f)}
+                    />
+                    {errors[f] && <p className="text-[11px] text-red-500 mt-0.5">{errors[f]}</p>}
+                  </div>
+                ))}
+              </div>
+
+              <SectionLabel>Açıklama</SectionLabel>
+
+              <div>
+                <textarea
+                  ref={(el) => { refs.current.description = el }}
+                  rows={2}
+                  value={values.description}
+                  onChange={(e) => set('description', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      submit()
+                    }
+                  }}
+                  placeholder="Ürün, not veya açıklama (isteğe bağlı)"
+                  className={`w-full bg-transparent border-0 border-b-2 rounded-none px-0 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none transition-colors resize-none ${
+                    errors.description ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-primary'
+                  }`}
+                />
+              </div>
+
+              {mutation.isError && (
+                <p className="text-xs text-red-500 -mt-1">Sunucu hatası. Bilgileri kontrol edin.</p>
+              )}
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <p className="text-[11px] text-muted-foreground/60">
+                  <span className="text-primary">*</span> Zorunlu alanlar
+                </p>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={mutation.isPending || (installmentRows.length > 0 && diff !== 0)}
+                  className="bg-primary text-primary-foreground rounded-lg px-6 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
+                >
+                  {mutation.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+                </button>
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Success banner */}
-        {saved && (
-          <div className="w-full max-w-[680px] mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 flex items-start gap-3">
-            <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-emerald-800">
-                Kaydedildi — {saved.customer?.name ?? 'Müşteri'}
-              </p>
-              <p className="text-xs text-emerald-700 mt-0.5">
-                {saved.installment_count} taksit &middot; {formatMoney(saved.total_amount)} &middot; İlk vade {formatDate(saved.first_due_date)}
-              </p>
+        {/* Right — installment plan panel */}
+        <div className={`w-96 shrink-0 border-l border-border flex flex-col ${installmentRows.length > 0 ? 'bg-card' : 'bg-muted/20'}`}>
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Taksit Planı</p>
+            {installmentRows.length > 0 && (
               <button
-                onClick={() => navigate(`/musteriler/${saved.customer_id}`)}
-                className="mt-1.5 text-xs text-emerald-700 underline"
+                type="button"
+                onClick={resetToEqual}
+                className="text-xs text-primary hover:underline"
               >
-                Müşteri kartını aç →
+                Eşit Dağıt
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Main form card */}
-        <div className="w-full max-w-[680px] bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-
-          {/* Ledger ID strip */}
-          <div className="bg-muted/60 border-b border-border px-6 py-3">
-            <p className="text-[10px] font-semibold tracking-widest text-muted-foreground/70 uppercase mb-2.5">
-              Defter Kimliği
-            </p>
-            <div className="grid grid-cols-3 gap-6">
-              {(['ledger_name', 'ledger_page', 'ledger_row'] as const).map((f) => (
-                <div key={f}>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                    {f === 'ledger_name' ? 'Defter' : f === 'ledger_page' ? 'Sayfa' : 'Satır'}
-                    <span className="text-primary ml-0.5">*</span>
-                  </label>
-                  <input
-                    ref={(el) => { refs.current[f] = el }}
-                    type={f === 'ledger_name' ? 'text' : 'number'}
-                    min={1}
-                    value={values[f]}
-                    onChange={(e) => set(f, e.target.value)}
-                    onKeyDown={(e) => handleKey(e, f)}
-                    autoFocus={f === 'ledger_name'}
-                    placeholder={f === 'ledger_name' ? 'A' : '1'}
-                    className={lineInput(f)}
-                  />
-                  {errors[f] && <p className="text-[11px] text-red-500 mt-0.5">{errors[f]}</p>}
-                </div>
-              ))}
-            </div>
+            )}
           </div>
 
-          {/* Form body */}
-          <div className="px-6 py-5 space-y-5">
-
-            <SectionLabel>Müşteri Bilgileri</SectionLabel>
-
-            <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                Müşteri Adı <span className="text-primary">*</span>
-              </label>
-              <input
-                ref={(el) => { refs.current.name = el }}
-                type="text"
-                value={values.name}
-                onChange={(e) => set('name', e.target.value)}
-                onKeyDown={(e) => handleKey(e, 'name')}
-                placeholder="Ad Soyad"
-                className={lineInput('name')}
-              />
-              {errors.name && <p className="text-[11px] text-red-500 mt-0.5">{errors.name}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-[11px] font-medium text-muted-foreground mb-1">Telefon</label>
-                <input
-                  ref={(el) => { refs.current.phone = el }}
-                  type="text"
-                  value={values.phone}
-                  onChange={(e) => set('phone', e.target.value)}
-                  onKeyDown={(e) => handleKey(e, 'phone')}
-                  placeholder="05xx xxx xx xx"
-                  className={lineInput('phone')}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-muted-foreground mb-1">TC Kimlik No</label>
-                <input
-                  ref={(el) => { refs.current.tc_kimlik = el }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={11}
-                  value={values.tc_kimlik}
-                  onChange={(e) => set('tc_kimlik', e.target.value.replace(/\D/g, ''))}
-                  onKeyDown={(e) => handleKey(e, 'tc_kimlik')}
-                  placeholder="11 rakam"
-                  className={lineInput('tc_kimlik')}
-                />
-                {errors.tc_kimlik && <p className="text-[11px] text-red-500 mt-0.5">{errors.tc_kimlik}</p>}
-              </div>
-            </div>
-
-            <SectionLabel>Finansal Bilgiler</SectionLabel>
-
-            <div className="grid grid-cols-3 gap-6">
-              {(['total_amount', 'down_payment', 'installment_count'] as const).map((f) => (
-                <div key={f}>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                    {f === 'total_amount' ? 'Toplam Tutar' : f === 'down_payment' ? 'Peşinat' : 'Taksit Sayısı'}
-                    {REQUIRED.has(f) && <span className="text-primary ml-0.5">*</span>}
-                  </label>
-                  <input
-                    ref={(el) => { refs.current[f] = el }}
-                    type="number"
-                    step={f === 'installment_count' ? '1' : '0.01'}
-                    min="0"
-                    value={values[f]}
-                    onChange={(e) => set(f, e.target.value)}
-                    onKeyDown={(e) => handleKey(e, f)}
-                    placeholder={f === 'installment_count' ? '12' : '0,00 ₺'}
-                    className={lineInput(f)}
-                  />
-                  {errors[f] && <p className="text-[11px] text-red-500 mt-0.5">{errors[f]}</p>}
+          <div className="flex-1 overflow-auto">
+            {installmentRows.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <span className="text-lg text-muted-foreground">₺</span>
                 </div>
-              ))}
-            </div>
+                <p className="text-sm text-muted-foreground">Taksit sayısı ve vade girilince plan burada görünür.</p>
+              </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-6">
-              {(['sale_date', 'first_due_date'] as const).map((f) => (
-                <div key={f}>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                    {f === 'sale_date' ? 'Satış Tarihi' : 'İlk Vade'}
-                    <span className="text-primary ml-0.5">*</span>
-                  </label>
-                  <input
-                    ref={(el) => { refs.current[f] = el }}
-                    type="date"
-                    value={values[f]}
-                    onChange={(e) => set(f, e.target.value)}
-                    onKeyDown={(e) => handleKey(e, f)}
-                    className={lineInput(f)}
-                  />
-                  {errors[f] && <p className="text-[11px] text-red-500 mt-0.5">{errors[f]}</p>}
-                </div>
-              ))}
-            </div>
-
-            {/* Installment plan section */}
             {installmentRows.length > 0 && (
               <>
-                <SectionLabel>Taksit Planı</SectionLabel>
-
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <div className="px-4 py-2 bg-muted/60 flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-muted-foreground">{installmentRows.length} taksit</span>
-                    <button
-                      type="button"
-                      onClick={resetToEqual}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Eşit Dağıt
-                    </button>
-                  </div>
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/30">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">#</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">Vade Tarihi</th>
-                        <th className="px-3 py-2 text-right text-[11px] font-medium text-muted-foreground">Tutar (₺)</th>
-                        <th className="px-3 py-2 text-center text-[11px] font-medium text-muted-foreground">Ödendi?</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-medium text-muted-foreground">Ödeme Tarihi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {installmentRows.map((row, idx) => (
-                        <tr key={idx} className="border-t border-border">
-                          <td className="px-3 py-1.5 tabular-nums text-muted-foreground text-xs">{idx + 1}</td>
-                          <td className="px-3 py-1.5 tabular-nums text-xs">{formatDate(row.due_date)}</td>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2.5 text-left text-[11px] font-medium text-muted-foreground w-8">#</th>
+                      <th className="px-3 py-2.5 text-left text-[11px] font-medium text-muted-foreground">Vade</th>
+                      <th className="px-3 py-2.5 text-right text-[11px] font-medium text-muted-foreground">Tutar (₺)</th>
+                      <th className="px-3 py-2.5 text-center text-[11px] font-medium text-muted-foreground w-10">✓</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {installmentRows.map((row, idx) => (
+                      <>
+                        <tr key={idx} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 tabular-nums text-muted-foreground text-xs">{idx + 1}</td>
+                          <td className="px-3 py-2 tabular-nums text-xs">{formatDate(row.due_date)}</td>
                           <td className="px-3 py-1.5 text-right">
                             <input
                               type="number"
@@ -509,10 +566,10 @@ export default function DefterAktarim() {
                                 newRows[idx] = { ...newRows[idx], amount: e.target.value }
                                 setInstallmentRows(newRows)
                               }}
-                              className="w-28 rounded border border-border bg-background px-2 py-1 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40"
+                              className="w-24 rounded border border-border bg-background px-2 py-1 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40"
                             />
                           </td>
-                          <td className="px-3 py-1.5 text-center">
+                          <td className="px-3 py-2 text-center">
                             <input
                               type="checkbox"
                               checked={row.paid}
@@ -524,75 +581,47 @@ export default function DefterAktarim() {
                               className="accent-primary"
                             />
                           </td>
-                          <td className="px-3 py-1.5">
-                            {row.paid && (
-                              <input
-                                type="date"
-                                value={row.paid_at}
-                                onChange={(e) => {
-                                  const newRows = [...installmentRows]
-                                  newRows[idx] = { ...newRows[idx], paid_at: e.target.value }
-                                  setInstallmentRows(newRows)
-                                }}
-                                className="rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
-                              />
-                            )}
-                          </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className={`px-4 py-2 border-t border-border text-xs font-medium ${diff !== 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                    Toplam: {formatMoney(rowsSum.toFixed(2))}
-                    {diff !== 0 && (
-                      <span className="ml-2">— Fark: {diff > 0 ? '+' : ''}{formatMoney(diff.toFixed(2))}</span>
-                    )}
+                        {row.paid && (
+                          <tr key={`${idx}-paid`} className="bg-emerald-50/60 border-t border-emerald-100">
+                            <td colSpan={4} className="px-3 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-emerald-700 shrink-0">Ödeme tarihi:</span>
+                                <input
+                                  type="date"
+                                  value={row.paid_at}
+                                  onChange={(e) => {
+                                    const newRows = [...installmentRows]
+                                    newRows[idx] = { ...newRows[idx], paid_at: e.target.value }
+                                    setInstallmentRows(newRows)
+                                  }}
+                                  className="flex-1 rounded border border-emerald-200 bg-white px-2 py-0.5 text-xs text-emerald-800 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className={`px-4 py-3 border-t border-border text-xs font-semibold sticky bottom-0 bg-card ${diff !== 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  <div className="flex items-center justify-between">
+                    <span>Toplam</span>
+                    <span className="tabular-nums">{formatMoney(rowsSum.toFixed(2))}</span>
                   </div>
+                  {diff !== 0 && (
+                    <p className="text-xs mt-0.5 font-normal">
+                      Fark: {diff > 0 ? '+' : ''}{formatMoney(diff.toFixed(2))} — tutarları düzeltin
+                    </p>
+                  )}
                 </div>
               </>
             )}
-
-            <SectionLabel>Açıklama</SectionLabel>
-
-            <div>
-              <textarea
-                ref={(el) => { refs.current.description = el }}
-                rows={2}
-                value={values.description}
-                onChange={(e) => set('description', e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    submit()
-                  }
-                }}
-                placeholder="Ürün, not veya açıklama (isteğe bağlı)"
-                className={`w-full bg-transparent border-0 border-b-2 rounded-none px-0 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none transition-colors resize-none ${
-                  errors.description ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-primary'
-                }`}
-              />
-            </div>
-
-            {mutation.isError && (
-              <p className="text-xs text-red-500 -mt-1">Sunucu hatası. Bilgileri kontrol edin.</p>
-            )}
-
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <p className="text-[11px] text-muted-foreground/60">
-                <span className="text-primary">*</span> Zorunlu alanlar
-              </p>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={mutation.isPending || (installmentRows.length > 0 && diff !== 0)}
-                className="bg-primary text-primary-foreground rounded-lg px-6 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
-              >
-                {mutation.isPending ? 'Kaydediliyor…' : 'Kaydet'}
-              </button>
-            </div>
           </div>
         </div>
+
       </div>
     </div>
   )

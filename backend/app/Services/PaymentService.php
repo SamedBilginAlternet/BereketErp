@@ -78,26 +78,30 @@ class PaymentService
      */
     public function customerBalance(int $customerId): array
     {
-        $installments = Installment::query()
-            ->whereHas('sale', fn ($q) => $q->where('customer_id', $customerId))
-            ->whereNotIn('status', [InstallmentStatus::Paid->value])
-            ->orderBy('due_date')
-            ->get();
+        $paid = InstallmentStatus::Paid->value;
 
-        $totalDebt = $installments->reduce(
-            fn ($carry, $i) => bcadd($carry, bcsub((string) $i->amount, (string) $i->paid_amount, 2), 2),
-            '0.00'
-        );
+        $agg = DB::table('installments as i')
+            ->join('sales as s', 's.id', '=', 'i.sale_id')
+            ->where('s.customer_id', $customerId)
+            ->where('i.status', '!=', $paid)
+            ->whereNull('s.deleted_at')
+            ->selectRaw('SUM(i.amount - i.paid_amount) as total_debt, COUNT(*) as remaining_count')
+            ->first();
 
-        $next = $installments->first();
+        $next = DB::table('installments as i')
+            ->join('sales as s', 's.id', '=', 'i.sale_id')
+            ->where('s.customer_id', $customerId)
+            ->where('i.status', '!=', $paid)
+            ->whereNull('s.deleted_at')
+            ->orderBy('i.due_date')
+            ->selectRaw('i.amount - i.paid_amount as remaining, i.due_date')
+            ->first();
 
         return [
-            'total_debt' => $totalDebt,
-            'remaining_installments' => $installments->count(),
-            'next_payment_amount' => $next
-                ? bcsub((string) $next->amount, (string) $next->paid_amount, 2)
-                : null,
-            'next_due_date' => $next?->due_date?->toDateString(),
+            'total_debt'             => number_format((float) ($agg->total_debt ?? 0), 2, '.', ''),
+            'remaining_installments' => (int) ($agg->remaining_count ?? 0),
+            'next_payment_amount'    => $next ? number_format((float) $next->remaining, 2, '.', '') : null,
+            'next_due_date'          => $next?->due_date,
         ];
     }
 }

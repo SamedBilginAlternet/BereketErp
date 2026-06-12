@@ -152,6 +152,8 @@ export default function YeniSatis() {
 
   const today = new Date().toISOString().slice(0, 10)
 
+  const hasPreview = installmentRows.length > 0 || previewLoading
+
   return (
     <div className="h-full flex flex-col">
       {/* Page header */}
@@ -160,178 +162,201 @@ export default function YeniSatis() {
         <p className="text-sm text-muted-foreground mt-0.5">Senet / taksit planı oluştur</p>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto px-8 py-6">
-        <div className="max-w-2xl">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Customer picker */}
-            <div>
-              <label className={labelClass}>Müşteri *</label>
-              {selectedCustomerName ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">{selectedCustomerName}</span>
+      {/* Two-column content */}
+      <div className="flex-1 overflow-auto">
+        <div className="flex h-full">
+          {/* Left — form */}
+          <div className="flex-1 min-w-0 px-8 py-6 overflow-auto">
+            <div className="max-w-lg">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {/* Customer picker */}
+                <div>
+                  <label className={labelClass}>Müşteri *</label>
+                  {selectedCustomerName ? (
+                    <div className="flex items-center gap-2 px-3 py-2 border border-border rounded-md bg-muted/40">
+                      <span className="text-sm font-medium text-foreground flex-1">{selectedCustomerName}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCustomerId(null); setSelectedCustomerName('') }}
+                        className="text-xs text-status-overdue hover:underline shrink-0"
+                      >
+                        Değiştir
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="search"
+                        placeholder="Ad ile ara…"
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        className={inputClass}
+                        autoFocus
+                      />
+                      {customers && customers.data.length > 0 && customerSearch.length > 0 && (
+                        <div className="border border-border rounded-md mt-1 bg-card shadow-sm">
+                          {customers.data.slice(0, 8).map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCustomerId(c.id)
+                                setSelectedCustomerName(c.name)
+                                setCustomerSearch('')
+                                setCustomerError('')
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                            >
+                              {c.name}
+                              {c.phone && <span className="text-muted-foreground ml-2 text-xs">{c.phone}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {customerError && <p className="text-xs text-status-overdue mt-1">{customerError}</p>}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className={labelClass}>Açıklama</label>
+                  <input {...register('description')} placeholder="Çeyiz seti, yorgan takımı vb." className={inputClass} />
+                </div>
+
+                {/* Money fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Toplam Tutar (₺) *</label>
+                    <input type="number" step="0.01" min="0.01" {...register('total_amount')} className={inputClass} />
+                    {errors.total_amount && <p className="text-xs text-status-overdue mt-1">{errors.total_amount.message}</p>}
+                  </div>
+                  <div>
+                    <label className={labelClass}>Peşinat (₺)</label>
+                    <input type="number" step="0.01" min="0" defaultValue={0} {...register('down_payment')} className={inputClass} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelClass}>Taksit Sayısı</label>
+                    <input type="number" min="1" max="60" defaultValue={1} {...register('installment_count')} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Satış Tarihi</label>
+                    <input type="date" defaultValue={today} {...register('sale_date')} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>İlk Vade</label>
+                    <input type="date" {...register('first_due_date')} className={inputClass} />
+                    {errors.first_due_date && <p className="text-xs text-status-overdue mt-1">{errors.first_due_date.message}</p>}
+                  </div>
+                </div>
+
+                {mutation.error && (
+                  <p className="text-sm text-status-overdue">Bir hata oluştu, bilgileri kontrol edip tekrar deneyin.</p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => { setSelectedCustomerId(null); setSelectedCustomerName('') }}
-                    className="text-xs text-status-overdue hover:underline"
+                    onClick={() => navigate(-1)}
+                    className="bg-muted text-foreground rounded-md px-5 py-2 text-sm font-medium hover:bg-border transition-colors"
                   >
-                    Değiştir
+                    Vazgeç
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={mutation.isPending || (diff !== 0 && installmentRows.length > 0)}
+                    className="bg-primary text-primary-foreground rounded-md px-5 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  >
+                    {mutation.isPending ? 'Kaydediliyor…' : 'Satışı Kaydet'}
                   </button>
                 </div>
-              ) : (
+              </form>
+            </div>
+          </div>
+
+          {/* Right — installment plan panel */}
+          <div className={`w-80 shrink-0 border-l border-border flex flex-col transition-all duration-200 ${hasPreview ? 'bg-card' : 'bg-muted/20'}`}>
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Taksit Planı</p>
+              {!previewLoading && installmentRows.length > 0 && (
+                <button
+                  type="button"
+                  onClick={resetToEqual}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Eşit Dağıt
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              {!hasPreview && (
+                <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <span className="text-lg text-muted-foreground">₺</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Tutar ve vade girilince taksit planı burada görünür.</p>
+                </div>
+              )}
+
+              {previewLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-sm text-muted-foreground animate-pulse">Hesaplanıyor…</p>
+                </div>
+              )}
+
+              {!previewLoading && installmentRows.length > 0 && (
                 <>
-                  <input
-                    type="search"
-                    placeholder="Ad ile ara…"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className={inputClass}
-                    autoFocus
-                  />
-                  {customers && customers.data.length > 0 && customerSearch.length > 0 && (
-                    <div className="border border-border rounded-md mt-1 bg-card shadow-sm">
-                      {customers.data.slice(0, 8).map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedCustomerId(c.id)
-                            setSelectedCustomerName(c.name)
-                            setCustomerSearch('')
-                            setCustomerError('')
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
-                        >
-                          {c.name}
-                          {c.phone && <span className="text-muted-foreground ml-2 text-xs">{c.phone}</span>}
-                        </button>
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">#</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Tutar (₺)</th>
+                        <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Vade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {installmentRows.map((row, idx) => (
+                        <tr key={idx} className="border-t border-border hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2 tabular-nums text-muted-foreground text-xs">{idx + 1}</td>
+                          <td className="px-4 py-1.5 text-right">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              value={row.amount}
+                              onChange={(e) => {
+                                const newRows = [...installmentRows]
+                                newRows[idx] = { ...newRows[idx], amount: e.target.value }
+                                setInstallmentRows(newRows)
+                              }}
+                              className="w-24 rounded border border-border bg-background px-2 py-1 text-xs text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40"
+                            />
+                          </td>
+                          <td className="px-4 py-2 tabular-nums text-xs">{formatDate(row.due_date)}</td>
+                        </tr>
                       ))}
+                    </tbody>
+                  </table>
+
+                  <div className={`px-4 py-3 border-t border-border text-xs font-semibold sticky bottom-0 bg-card ${diff !== 0 ? 'text-status-overdue' : 'text-muted-foreground'}`}>
+                    <div className="flex items-center justify-between">
+                      <span>Toplam</span>
+                      <span className="tabular-nums">{formatMoney(rowsSum.toFixed(2))}</span>
                     </div>
-                  )}
+                    {diff !== 0 && (
+                      <p className="text-xs mt-0.5 font-normal">
+                        Fark: {diff > 0 ? '+' : ''}{formatMoney(diff.toFixed(2))} — tutarları düzeltin
+                      </p>
+                    )}
+                  </div>
                 </>
               )}
-              {customerError && <p className="text-xs text-status-overdue mt-1">{customerError}</p>}
             </div>
-
-            {/* Description */}
-            <div>
-              <label className={labelClass}>Açıklama</label>
-              <input {...register('description')} placeholder="Çeyiz seti, yorgan takımı vb." className={inputClass} />
-            </div>
-
-            {/* Money fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Toplam Tutar (₺) *</label>
-                <input type="number" step="0.01" min="0.01" {...register('total_amount')} className={inputClass} />
-                {errors.total_amount && <p className="text-xs text-status-overdue mt-1">{errors.total_amount.message}</p>}
-              </div>
-              <div>
-                <label className={labelClass}>Peşinat (₺)</label>
-                <input type="number" step="0.01" min="0" defaultValue={0} {...register('down_payment')} className={inputClass} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className={labelClass}>Taksit Sayısı</label>
-                <input type="number" min="1" max="60" defaultValue={1} {...register('installment_count')} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Satış Tarihi</label>
-                <input type="date" defaultValue={today} {...register('sale_date')} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>İlk Vade</label>
-                <input type="date" {...register('first_due_date')} className={inputClass} />
-                {errors.first_due_date && <p className="text-xs text-status-overdue mt-1">{errors.first_due_date.message}</p>}
-              </div>
-            </div>
-
-            {/* Installment rows table */}
-            {(installmentRows.length > 0 || previewLoading) && (
-              <div className="border border-border rounded-lg overflow-hidden">
-                <div className="px-4 py-2.5 bg-muted flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {previewLoading ? 'Hesaplanıyor…' : 'Taksit Planı'}
-                  </span>
-                  {!previewLoading && (
-                    <button
-                      type="button"
-                      onClick={resetToEqual}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Eşit Dağıt
-                    </button>
-                  )}
-                </div>
-                {!previewLoading && installmentRows.length > 0 && (
-                  <>
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">#</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Tutar (₺)</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Vade Tarihi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {installmentRows.map((row, idx) => (
-                          <tr key={idx} className="border-t border-border">
-                            <td className="px-4 py-2 tabular-nums text-muted-foreground">{idx + 1}</td>
-                            <td className="px-4 py-1.5 text-right">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                value={row.amount}
-                                onChange={(e) => {
-                                  const newRows = [...installmentRows]
-                                  newRows[idx] = { ...newRows[idx], amount: e.target.value }
-                                  setInstallmentRows(newRows)
-                                }}
-                                className="w-32 rounded border border-border bg-background px-2 py-1 text-sm text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/40"
-                              />
-                            </td>
-                            <td className="px-4 py-2 tabular-nums">{formatDate(row.due_date)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className={`px-4 py-2 border-t border-border text-xs font-medium ${diff !== 0 ? 'text-status-overdue' : 'text-muted-foreground'}`}>
-                      Toplam: {formatMoney(rowsSum.toFixed(2))}
-                      {diff !== 0 && (
-                        <span className="ml-2">
-                          (Fark: {diff > 0 ? '+' : ''}{formatMoney(diff.toFixed(2))})
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {mutation.error && (
-              <p className="text-sm text-status-overdue">Bir hata oluştu, bilgileri kontrol edip tekrar deneyin.</p>
-            )}
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="bg-muted text-foreground rounded-md px-5 py-2 text-sm font-medium hover:bg-border transition-colors"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="submit"
-                disabled={mutation.isPending || (diff !== 0 && installmentRows.length > 0)}
-                className="bg-primary text-primary-foreground rounded-md px-5 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                {mutation.isPending ? 'Kaydediliyor…' : 'Satışı Kaydet'}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

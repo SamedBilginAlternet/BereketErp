@@ -13,70 +13,43 @@ class ReportsController extends Controller
 {
     public function summary(): JsonResponse
     {
-        $today = now('Europe/Istanbul')->toDateString();
-
-        $totalRemaining = DB::table('installments')
-            ->join('sales', 'sales.id', '=', 'installments.sale_id')
-            ->whereIn('installments.status', [
-                InstallmentStatus::Pending->value,
-                InstallmentStatus::Partial->value,
-                InstallmentStatus::Overdue->value,
-            ])
-            ->whereNull('sales.deleted_at')
-            ->sum(DB::raw('installments.amount - installments.paid_amount'));
-
-        $overdueTotal = DB::table('installments')
-            ->join('sales', 'sales.id', '=', 'installments.sale_id')
-            ->whereIn('installments.status', [
-                InstallmentStatus::Pending->value,
-                InstallmentStatus::Partial->value,
-                InstallmentStatus::Overdue->value,
-            ])
-            ->where('installments.due_date', '<', $today)
-            ->whereNull('sales.deleted_at')
-            ->sum(DB::raw('installments.amount - installments.paid_amount'));
-
-        $overdueCount = DB::table('installments')
-            ->join('sales', 'sales.id', '=', 'installments.sale_id')
-            ->whereIn('installments.status', [
-                InstallmentStatus::Pending->value,
-                InstallmentStatus::Partial->value,
-                InstallmentStatus::Overdue->value,
-            ])
-            ->where('installments.due_date', '<', $today)
-            ->whereNull('sales.deleted_at')
-            ->count();
-
+        $today        = now('Europe/Istanbul')->toDateString();
         $startOfMonth = now('Europe/Istanbul')->startOfMonth()->toDateString();
         $endOfMonth   = now('Europe/Istanbul')->endOfMonth()->toDateString();
+        $unpaid       = [
+            InstallmentStatus::Pending->value,
+            InstallmentStatus::Partial->value,
+            InstallmentStatus::Overdue->value,
+        ];
 
-        $collectedThisMonth = DB::table('payments')
-            ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
+        // Single query: total remaining + overdue total + overdue count + active customers
+        $row = DB::selectOne("
+            SELECT
+                SUM(i.amount - i.paid_amount)                                          AS total_remaining,
+                SUM(CASE WHEN i.due_date < ? THEN i.amount - i.paid_amount ELSE 0 END) AS overdue_total,
+                SUM(CASE WHEN i.due_date < ? THEN 1 ELSE 0 END)                        AS overdue_count,
+                COUNT(DISTINCT s.customer_id)                                           AS active_customers
+            FROM installments i
+            JOIN sales s ON s.id = i.sale_id AND s.deleted_at IS NULL
+            WHERE i.status IN (?, ?, ?)
+        ", [$today, $today, ...$unpaid]);
 
-        $collectedAllTime = DB::table('payments')->sum('amount');
-
-        $activeCustomers = DB::table('customers')
-            ->join('sales', 'sales.customer_id', '=', 'customers.id')
-            ->join('installments', 'installments.sale_id', '=', 'sales.id')
-            ->whereIn('installments.status', [
-                InstallmentStatus::Pending->value,
-                InstallmentStatus::Partial->value,
-                InstallmentStatus::Overdue->value,
-            ])
-            ->whereNull('sales.deleted_at')
-            ->whereNull('customers.deleted_at')
-            ->distinct('customers.id')
-            ->count('customers.id');
+        // Single query: payment totals (this month + all time)
+        $payments = DB::selectOne("
+            SELECT
+                SUM(amount)                                                            AS all_time,
+                SUM(CASE WHEN paid_at BETWEEN ? AND ? THEN amount ELSE 0 END)         AS this_month
+            FROM payments
+        ", [$startOfMonth, $endOfMonth]);
 
         return response()->json([
             'data' => [
-                'total_remaining_debt' => number_format((float) $totalRemaining, 2, '.', ''),
-                'overdue_total'        => number_format((float) $overdueTotal, 2, '.', ''),
-                'overdue_count'        => $overdueCount,
-                'collected_this_month' => number_format((float) $collectedThisMonth, 2, '.', ''),
-                'collected_all_time'   => number_format((float) $collectedAllTime, 2, '.', ''),
-                'active_customers'     => $activeCustomers,
+                'total_remaining_debt' => number_format((float) ($row->total_remaining ?? 0), 2, '.', ''),
+                'overdue_total'        => number_format((float) ($row->overdue_total ?? 0), 2, '.', ''),
+                'overdue_count'        => (int) ($row->overdue_count ?? 0),
+                'collected_this_month' => number_format((float) ($payments->this_month ?? 0), 2, '.', ''),
+                'collected_all_time'   => number_format((float) ($payments->all_time ?? 0), 2, '.', ''),
+                'active_customers'     => (int) ($row->active_customers ?? 0),
             ],
         ]);
     }

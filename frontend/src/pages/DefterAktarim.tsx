@@ -496,27 +496,32 @@ export default function DefterAktarim() {
               )}
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <p className="text-[11px] text-muted-foreground/60">
-                  <span className="text-primary">*</span> Zorunlu alanlar
-                </p>
+              <div className="pt-3 border-t border-border space-y-3">
                 <button
                   type="button"
                   onClick={submit}
                   disabled={mutation.isPending || (installmentRows.length > 0 && diff !== 0)}
-                  className="bg-primary text-primary-foreground rounded-lg px-6 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
+                  className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
                 >
                   {mutation.isPending ? 'Kaydediliyor…' : 'Kaydet'}
                 </button>
+                <p className="text-[11px] text-muted-foreground/50 text-center">
+                  <span className="text-primary">*</span> işaretli alanlar zorunludur
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Right — installment plan panel */}
-        <div className={`w-96 shrink-0 border-l border-border flex flex-col ${installmentRows.length > 0 ? 'bg-card' : 'bg-muted/20'}`}>
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Taksit Planı</p>
+        <div className="w-96 shrink-0 border-l border-border flex flex-col bg-muted/30">
+          <div className="px-5 py-4 border-b border-border bg-card flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold tracking-wide text-foreground">Taksit Planı</p>
+              {installmentRows.length > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">{installmentRows.length} taksit</p>
+              )}
+            </div>
             {installmentRows.length > 0 && (
               <button
                 type="button"
@@ -528,7 +533,7 @@ export default function DefterAktarim() {
             )}
           </div>
 
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto p-4">
             {installmentRows.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
                 <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
@@ -539,7 +544,7 @@ export default function DefterAktarim() {
             )}
 
             {installmentRows.length > 0 && (
-              <>
+              <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/60 sticky top-0">
                     <tr>
@@ -606,7 +611,7 @@ export default function DefterAktarim() {
                   </tbody>
                 </table>
 
-                <div className={`px-4 py-3 border-t border-border text-xs font-semibold sticky bottom-0 bg-card ${diff !== 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                <div className={`px-4 py-3 border-t border-border text-xs font-semibold ${diff !== 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                   <div className="flex items-center justify-between">
                     <span>Toplam</span>
                     <span className="tabular-nums">{formatMoney(rowsSum.toFixed(2))}</span>
@@ -617,7 +622,7 @@ export default function DefterAktarim() {
                     </p>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
